@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Hockey Tryout Evaluations</title>
+<style>
+  :root{
+    --bg:#f4f6f8; --card:#fff; --ink:#1a2430; --muted:#68778a;
+    --accent:#c8102e; --accent2:#00205b; --line:#dde3ea;
+    --good:#1e8e3e; --warn:#e37400;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);}
+  header{background:var(--accent2);color:#fff;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10;}
+  header h1{font-size:17px;margin:0;font-weight:600;}
+  header .sub{font-size:12px;opacity:.8;}
+  .hbtns{display:flex;gap:8px;align-items:center;}
+  main{max-width:860px;margin:0 auto;padding:12px;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:12px;}
+  button{font:inherit;border:0;border-radius:10px;cursor:pointer;}
+  .btn{background:var(--accent2);color:#fff;padding:12px 18px;font-size:16px;font-weight:600;}
+  .btn.red{background:var(--accent);}
+  .btn.ghost{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.5);padding:8px 12px;font-size:13px;}
+  .btn.small{padding:8px 12px;font-size:14px;}
+  .btn:disabled{opacity:.5;cursor:default;}
+  input,textarea,select{font:inherit;width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);}
+  textarea{min-height:70px;resize:vertical;}
+  label{font-size:13px;font-weight:600;color:var(--muted);display:block;margin:10px 0 4px;}
+  .hidden{display:none !important;}
+  .err{color:var(--accent);font-size:14px;margin-top:8px;min-height:18px;}
+  .banner{padding:8px 14px;font-size:13px;font-weight:600;text-align:center;color:#fff;}
+  .banner.off{background:var(--warn);}
+  .banner.ok{background:var(--good);}
+
+  /* player list */
+  .plist{display:flex;flex-direction:column;gap:8px;}
+  .prow{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;cursor:pointer;}
+  .prow:active{background:#eef2f6;}
+  .pnum{font-size:18px;font-weight:800;color:var(--accent2);min-width:44px;text-align:center;background:#eef2f6;border-radius:8px;padding:8px 4px;}
+  .pname{flex:1;font-size:16px;font-weight:600;}
+  .pstat{font-size:13px;color:var(--muted);text-align:right;}
+  .pstat .done{color:var(--good);font-weight:700;}
+  .pstat .pend{color:var(--warn);font-weight:700;}
+
+  /* score buttons */
+  .scale{display:flex;gap:8px;margin-top:4px;}
+  .scale button{flex:1;padding:14px 0;font-size:18px;font-weight:700;background:#eef2f6;color:var(--ink);border:2px solid transparent;}
+  .scale button.sel{background:var(--accent2);color:#fff;}
+  .catlabel{display:flex;justify-content:space-between;align-items:baseline;margin:14px 0 2px;}
+  .catlabel b{font-size:15px;}
+  .catlabel span{font-size:12px;color:var(--muted);}
+  .overall .scale button.sel{background:var(--accent);}
+
+  /* admin table */
+  table{width:100%;border-collapse:collapse;font-size:14px;}
+  th,td{padding:10px 8px;border-bottom:1px solid var(--line);text-align:left;}
+  th{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;}
+  td.num,th.num{text-align:center;}
+  tr.expandable{cursor:pointer;}
+  tr.expandable:hover{background:#f0f3f7;}
+  .avg{font-weight:800;color:var(--accent);font-size:16px;}
+  .detail{background:#f8fafc;}
+  .detail td{padding:8px 12px;}
+  .evalnote{margin:6px 0;padding:8px 10px;background:#fff;border:1px solid var(--line);border-radius:8px;font-size:13px;}
+  .evalnote b{color:var(--accent2);}
+  .evalnote .nums{color:var(--muted);font-size:12px;margin-left:4px;}
+  .tabs{display:flex;gap:8px;margin-bottom:12px;}
+  .tabs button{flex:1;padding:12px;font-size:15px;font-weight:600;background:#e4e9ef;color:var(--muted);}
+  .tabs button.on{background:var(--accent2);color:#fff;}
+  .rosterrow{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);}
+  .rosterrow .pname{font-weight:500;}
+  .link{background:none;color:var(--accent2);text-decoration:underline;font-size:13px;padding:4px;}
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center;}
+  .count{font-size:13px;color:var(--muted);margin-left:auto;}
+  .back{background:none;color:#fff;font-size:22px;padding:0 8px;}
+  @media(max-width:600px){ th.opt, td.opt{display:none;} }
+</style>
+</head>
+<body>
+
+<header>
+  <div style="display:flex;align-items:center;gap:6px;">
+    <button id="backBtn" class="back hidden">&#8592;</button>
+    <div>
+      <h1 id="hTitle">Hockey Tryout Evaluations</h1>
+      <div class="sub" id="hSub"></div>
+    </div>
+  </div>
+  <div class="hbtns">
+    <button id="signOutBtn" class="btn ghost hidden">Sign out</button>
+  </div>
+</header>
+
+<div id="netBanner" class="banner off hidden">Offline — scores will be saved on this phone and sent when connection returns</div>
+<div id="queueBanner" class="banner ok hidden"></div>
+
+<main>
+
+  <!-- LOGIN -->
+  <section id="loginView" class="hidden">
+    <div class="card" style="max-width:420px;margin:40px auto;">
+      <h2 style="margin-top:0;">Evaluator sign in</h2>
+      <label>Email</label>
+      <input id="loginEmail" type="email" autocomplete="username" placeholder="you@example.com">
+      <label>Password</label>
+      <input id="loginPass" type="password" autocomplete="current-password">
+      <div class="err" id="loginErr"></div>
+      <button id="loginBtn" class="btn" style="width:100%;margin-top:8px;">Sign in</button>
+    </div>
+  </section>
+
+  <!-- EVALUATOR: player list -->
+  <section id="evalListView" class="hidden">
+    <div class="toolbar">
+      <input id="searchBox" placeholder="Search name or number..." style="flex:1;">
+    </div>
+    <div class="plist" id="playerList"></div>
+  </section>
+
+  <!-- EVALUATOR: scoring a player -->
+  <section id="scoreView" class="hidden">
+    <div class="card">
+      <h2 id="scorePlayerName" style="margin:0 0 4px;"></h2>
+      <div id="scoreCats"></div>
+      <label>Notes (optional)</label>
+      <textarea id="scoreNotes" placeholder="Quick observations..."></textarea>
+      <div class="err" id="scoreErr"></div>
+      <button id="saveScoreBtn" class="btn red" style="width:100%;margin-top:10px;">Save score</button>
+    </div>
+  </section>
+
+  <!-- ADMIN -->
+  <section id="adminView" class="hidden">
+    <div class="tabs">
+      <button id="tabScores" class="on">Live scores</button>
+      <button id="tabRoster">Roster</button>
+    </div>
+
+    <div id="adminScores">
+      <div class="toolbar">
+        <button id="exportSummaryBtn" class="btn small">Export summary CSV</button>
+        <button id="exportDetailBtn" class="btn small">Export detail CSV</button>
+        <span class="count" id="scoreCount"></span>
+      </div>
+      <div class="card" style="padding:6px 10px;overflow-x:auto;">
+        <table>
+          <thead><tr>
+            <th class="num">#</th><th>Player</th>
+            <th class="num">Overall</th><th class="num">Evals</th>
+            <th class="num opt">Skating</th><th class="num opt">Compete</th><th class="num opt">Hockey IQ</th>
+          </tr></thead>
+          <tbody id="scoreTable"></tbody>
+        </table>
+      </div>
+      <p style="font-size:12px;color:var(--muted);">Ranked by average overall score. Tap a row to see each evaluator's scores and notes. Updates live.</p>
+    </div>
+
+    <div id="adminRoster" class="hidden">
+      <div class="card">
+        <h3 style="margin-top:0;">Add player</h3>
+        <div style="display:flex;gap:8px;">
+          <input id="newNum" type="number" placeholder="#" style="width:80px;">
+          <input id="newName" placeholder="Player name" style="flex:1;">
+          <button id="addPlayerBtn" class="btn small">Add</button>
+        </div>
+        <div class="err" id="rosterErr"></div>
+      </div>
+      <div class="card" id="rosterList"></div>
+    </div>
+  </section>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+"use strict";
+
+/* ================= CONFIG ================= */
+const SUPABASE_URL = "https://zmurervbsodzjlzcpqvt.supabase.co";
+const SUPABASE_KEY = "sb_publishable_7aFQ-qkRpqCKgZ812NjeZA_NRT9osTP";
+const SCALE_MAX = 5;
+const CATS = [
+  { key:"skating",   label:"Skating" },
+  { key:"compete",   label:"Compete" },
+  { key:"hockey_iq", label:"Hockey IQ" },
+  { key:"overall",   label:"OVERALL", main:true }
+];
+
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+/* ================= STATE ================= */
+let me = null;            // { id, display_name, is_admin }
+let players = [];         // roster
+let myScores = {};        // evaluator: player_id -> score row (saved on server)
+let allScores = [];       // admin: every score row
+let profileNames = {};    // user id -> display name
+let currentPlayer = null; // player being scored
+let draft = {};           // current score selections
+let flushTimer = null;
+
+const $ = id => document.getElementById(id);
+const views = ["loginView","evalListView","scoreView","adminView"];
+function show(view){
+  views.forEach(v => $(v).classList.toggle("hidden", v!==view));
+  $("backBtn").classList.toggle("hidden", view!=="scoreView");
+  $("signOutBtn").classList.toggle("hidden", view==="loginView");
+}
+
+/* ================= OFFLINE QUEUE ================= */
+function qKey(){ return "pendingScores_" + (me ? me.id : "anon"); }
+function loadQueue(){ try { return JSON.parse(localStorage.getItem(qKey())) || {}; } catch(e){ return {}; } }
+function saveQueue(q){ localStorage.setItem(qKey(), JSON.stringify(q)); updateQueueBanner(q); }
+function queueScore(row){
+  const q = loadQueue();
+  q[row.player_id] = row;           // latest wins per player
+  saveQueue(q);
+}
+function updateQueueBanner(q){
+  q = q || loadQueue();
+  const n = Object.keys(q).length;
+  const b = $("queueBanner");
+  if (n > 0){
+    b.textContent = n + " score" + (n>1?"s":"") + " waiting to send — will retry automatically";
+    b.classList.remove("hidden");
+  } else b.classList.add("hidden");
+}
+async function flushQueue(){
+  if (!me || me.is_admin) return;
+  const q = loadQueue();
+  const ids = Object.keys(q);
+  if (!ids.length) return;
+  for (const pid of ids){
+    const ok = await pushScore(q[pid]);
+    if (ok){
+      const q2 = loadQueue();
+      delete q2[pid];
+      saveQueue(q2);
+    } else break; // still offline; stop trying for now
+  }
+  renderPlayerList();
+}
+async function pushScore(row){
+  try {
+    const { error } = await db.from("scores")
+      .upsert(row, { onConflict: "player_id,evaluator_id" });
+    if (error) { console.warn("upsert failed", error.message); return false; }
+    myScores[row.player_id] = row;
+    return true;
+  } catch(e){ return false; }
+}
+
+window.addEventListener("online",  () => { $("netBanner").classList.add("hidden"); flushQueue(); });
+window.addEventListener("offline", () => $("netBanner").classList.remove("hidden"));
+if (!navigator.onLine) $("netBanner").classList.remove("hidden");
+
+/* ================= AUTH ================= */
+async function init(){
+  const { data: { session } } = await db.auth.getSession();
+  if (session) await afterLogin(session.user);
+  else show("loginView");
+}
+
+$("loginBtn").onclick = async () => {
+  $("loginErr").textContent = "";
+  $("loginBtn").disabled = true;
+  const { data, error } = await db.auth.signInWithPassword({
+    email: $("loginEmail").value.trim(),
+    password: $("loginPass").value
+  });
+  $("loginBtn").disabled = false;
+  if (error){ $("loginErr").textContent = "Sign-in failed: " + error.message; return; }
+  await afterLogin(data.user);
+};
+$("loginPass").addEventListener("keydown", e => { if (e.key === "Enter") $("loginBtn").click(); });
+
+$("signOutBtn").onclick = async () => {
+  await db.auth.signOut();
+  me = null;
+  location.reload();
+};
+
+async function afterLogin(user){
+  const { data: prof, error } = await db.from("profiles").select("*").eq("id", user.id).single();
+  if (error || !prof){
+    $("loginErr").textContent = "No profile found for this account. Ask the admin.";
+    await db.auth.signOut();
+    show("loginView");
+    return;
+  }
+  me = prof;
+  $("hSub").textContent = prof.display_name + (prof.is_admin ? " (admin)" : "");
+  if (prof.is_admin) await startAdmin();
+  else await startEvaluator();
+}
+
+/* ================= SHARED DATA ================= */
+async function loadPlayers(){
+  const { data, error } = await db.from("players").select("*").order("jersey_number");
+  if (!error) players = data || [];
+}
+
+/* ================= EVALUATOR ================= */
+async function startEvaluator(){
+  await loadPlayers();
+  const { data } = await db.from("scores").select("*").eq("evaluator_id", me.id);
+  myScores = {};
+  (data || []).forEach(r => myScores[r.player_id] = r);
+  updateQueueBanner();
+  renderPlayerList();
+  show("evalListView");
+  flushQueue();
+  if (flushTimer) clearInterval(flushTimer);
+  flushTimer = setInterval(flushQueue, 12000);
+}
+
+$("searchBox").addEventListener("input", renderPlayerList);
+
+function renderPlayerList(){
+  const filter = ($("searchBox").value || "").toLowerCase();
+  const q = loadQueue();
+  const list = $("playerList");
+  list.innerHTML = "";
+  players
+    .filter(p => !filter || p.name.toLowerCase().includes(filter) || String(p.jersey_number).includes(filter))
+    .forEach(p => {
+      const saved = myScores[p.id];
+      const pending = q[p.id];
+      const row = document.createElement("div");
+      row.className = "prow";
+      let stat = "Not scored";
+      if (pending) stat = '<span class="pend">Saved on phone (' + pending.overall + '/' + SCALE_MAX + ')</span>';
+      else if (saved) stat = '<span class="done">&#10003; ' + saved.overall + "/" + SCALE_MAX + '</span>';
+      row.innerHTML = '<div class="pnum">' + p.jersey_number + '</div>' +
+                      '<div class="pname">' + esc(p.name) + '</div>' +
+                      '<div class="pstat">' + stat + '</div>';
+      row.onclick = () => openScore(p);
+      list.appendChild(row);
+    });
+}
+
+function openScore(p){
+  currentPlayer = p;
+  const existing = loadQueue()[p.id] || myScores[p.id] || {};
+  draft = {
+    skating: existing.skating || null,
+    compete: existing.compete || null,
+    hockey_iq: existing.hockey_iq || null,
+    overall: existing.overall || null
+  };
+  $("scorePlayerName").textContent = "#" + p.jersey_number + " " + p.name;
+  $("scoreNotes").value = existing.notes || "";
+  $("scoreErr").textContent = "";
+  renderCats();
+  show("scoreView");
+  window.scrollTo(0,0);
+}
+
+function renderCats(){
+  const wrap = $("scoreCats");
+  wrap.innerHTML = "";
+  CATS.forEach(c => {
+    const div = document.createElement("div");
+    if (c.main) div.className = "overall";
+    let btns = "";
+    for (let i=1; i<=SCALE_MAX; i++){
+      btns += '<button data-cat="'+c.key+'" data-v="'+i+'" class="'+(draft[c.key]===i?"sel":"")+'">'+i+'</button>';
+    }
+    div.innerHTML = '<div class="catlabel"><b>'+c.label+'</b><span>1 = low &middot; '+SCALE_MAX+' = elite</span></div>' +
+                    '<div class="scale">'+btns+'</div>';
+    wrap.appendChild(div);
+  });
+  wrap.querySelectorAll("button").forEach(b => {
+    b.onclick = () => { draft[b.dataset.cat] = parseInt(b.dataset.v); renderCats(); };
+  });
+}
+
+$("backBtn").onclick = () => { show("evalListView"); renderPlayerList(); };
+
+$("saveScoreBtn").onclick = async () => {
+  if (!draft.overall){ $("scoreErr").textContent = "Overall score is required."; return; }
+  const row = {
+    player_id: currentPlayer.id,
+    evaluator_id: me.id,
+    skating: draft.skating, compete: draft.compete,
+    hockey_iq: draft.hockey_iq, overall: draft.overall,
+    notes: $("scoreNotes").value.trim() || null,
+    updated_at: new Date().toISOString()
+  };
+  $("saveScoreBtn").disabled = true;
+  const ok = await pushScore(row);
+  $("saveScoreBtn").disabled = false;
+  if (!ok) queueScore(row);   // offline / failed -> queue locally
+  show("evalListView");
+  renderPlayerList();
+};
+
+/* ================= ADMIN ================= */
+async function startAdmin(){
+  await loadPlayers();
+  const { data: profs } = await db.from("profiles").select("id, display_name");
+  (profs || []).forEach(p => profileNames[p.id] = p.display_name);
+  await refreshScores();
+  renderRoster();
+  show("adminView");
+  db.channel("scores-live")
+    .on("postgres_changes", { event:"*", schema:"public", table:"scores" }, () => refreshScores())
+    .subscribe();
+}
+
+async function refreshScores(){
+  const { data, error } = await db.from("scores").select("*");
+  if (!error){ allScores = data || []; renderScoreTable(); }
+}
+
+function avg(rows, key){
+  const v = rows.map(r => r[key]).filter(x => x != null);
+  if (!v.length) return null;
+  return v.reduce((a,b)=>a+b,0) / v.length;
+}
+function fmt(n){ return n == null ? "–" : (Math.round(n*100)/100).toFixed(2); }
+
+function playerRows(){
+  return players.map(p => {
+    const rows = allScores.filter(s => s.player_id === p.id);
+    return { p, rows,
+      overall: avg(rows,"overall"), skating: avg(rows,"skating"),
+      compete: avg(rows,"compete"), hockey_iq: avg(rows,"hockey_iq") };
+  }).sort((a,b) => (b.overall ?? -1) - (a.overall ?? -1));
+}
+
+let expanded = {};
+function renderScoreTable(){
+  const tb = $("scoreTable");
+  tb.innerHTML = "";
+  const data = playerRows();
+  $("scoreCount").textContent = allScores.length + " scores submitted";
+  data.forEach(d => {
+    const tr = document.createElement("tr");
+    tr.className = "expandable";
+    tr.innerHTML = '<td class="num"><b>'+d.p.jersey_number+'</b></td>' +
+      '<td>'+esc(d.p.name)+'</td>' +
+      '<td class="num avg">'+fmt(d.overall)+'</td>' +
+      '<td class="num">'+d.rows.length+'</td>' +
+      '<td class="num opt">'+fmt(d.skating)+'</td>' +
+      '<td class="num opt">'+fmt(d.compete)+'</td>' +
+      '<td class="num opt">'+fmt(d.hockey_iq)+'</td>';
+    tr.onclick = () => { expanded[d.p.id] = !expanded[d.p.id]; renderScoreTable(); };
+    tb.appendChild(tr);
+    if (expanded[d.p.id]){
+      const dtr = document.createElement("tr");
+      dtr.className = "detail";
+      let inner = "";
+      if (!d.rows.length) inner = '<em>No scores yet.</em>';
+      d.rows.forEach(r => {
+        inner += '<div class="evalnote"><b>' + esc(profileNames[r.evaluator_id] || "Evaluator") + '</b>' +
+          '<span class="nums"> overall '+r.overall+' &middot; skate '+(r.skating??"–")+' &middot; compete '+(r.compete??"–")+' &middot; IQ '+(r.hockey_iq??"–")+'</span>' +
+          (r.notes ? '<div>'+esc(r.notes)+'</div>' : '') + '</div>';
+      });
+      dtr.innerHTML = '<td colspan="7">'+inner+'</td>';
+      tb.appendChild(dtr);
+    }
+  });
+}
+
+/* tabs */
+$("tabScores").onclick = () => setTab(true);
+$("tabRoster").onclick = () => setTab(false);
+function setTab(scores){
+  $("tabScores").classList.toggle("on", scores);
+  $("tabRoster").classList.toggle("on", !scores);
+  $("adminScores").classList.toggle("hidden", !scores);
+  $("adminRoster").classList.toggle("hidden", scores);
+}
+
+/* roster management */
+$("addPlayerBtn").onclick = async () => {
+  $("rosterErr").textContent = "";
+  const num = parseInt($("newNum").value), name = $("newName").value.trim();
+  if (!num || !name){ $("rosterErr").textContent = "Need a number and a name."; return; }
+  const { error } = await db.from("players").insert({ jersey_number: num, name });
+  if (error){ $("rosterErr").textContent = error.message; return; }
+  $("newNum").value = ""; $("newName").value = "";
+  await loadPlayers(); renderRoster(); renderScoreTable();
+};
+
+function renderRoster(){
+  const el = $("rosterList");
+  el.innerHTML = "<h3 style='margin-top:0;'>Roster (" + players.length + ")</h3>";
+  players.forEach(p => {
+    const row = document.createElement("div");
+    row.className = "rosterrow";
+    row.innerHTML = '<div class="pnum">'+p.jersey_number+'</div><div class="pname" style="flex:1;">'+esc(p.name)+'</div>';
+    const edit = document.createElement("button");
+    edit.className = "link"; edit.textContent = "Edit";
+    edit.onclick = async () => {
+      const name = prompt("Player name:", p.name); if (name === null) return;
+      const numS = prompt("Jersey number:", p.jersey_number); if (numS === null) return;
+      await db.from("players").update({ name: name.trim(), jersey_number: parseInt(numS) }).eq("id", p.id);
+      await loadPlayers(); renderRoster(); renderScoreTable();
+    };
+    const del = document.createElement("button");
+    del.className = "link"; del.textContent = "Delete"; del.style.color = "var(--accent)";
+    del.onclick = async () => {
+      if (!confirm("Delete #" + p.jersey_number + " " + p.name + "? Their scores are deleted too.")) return;
+      await db.from("players").delete().eq("id", p.id);
+      await loadPlayers(); renderRoster(); renderScoreTable();
+    };
+    row.appendChild(edit); row.appendChild(del);
+    el.appendChild(row);
+  });
+}
+
+/* CSV export */
+function downloadCSV(name, rows){
+  const csv = rows.map(r => r.map(c => {
+    c = c == null ? "" : String(c);
+    return /[",\n]/.test(c) ? '"' + c.replace(/"/g,'""') + '"' : c;
+  }).join(",")).join("\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob(["﻿" + csv], { type:"text/csv" }));
+  a.download = name;
+  a.click();
+}
+$("exportSummaryBtn").onclick = () => {
+  const rows = [["Rank","Jersey","Player","Avg Overall","Avg Skating","Avg Compete","Avg Hockey IQ","# Evaluations"]];
+  playerRows().forEach((d,i) => rows.push([i+1, d.p.jersey_number, d.p.name,
+    fmt(d.overall), fmt(d.skating), fmt(d.compete), fmt(d.hockey_iq), d.rows.length]));
+  downloadCSV("tryout-summary.csv", rows);
+};
+$("exportDetailBtn").onclick = () => {
+  const rows = [["Jersey","Player","Evaluator","Overall","Skating","Compete","Hockey IQ","Notes"]];
+  playerRows().forEach(d => d.rows.forEach(r =>
+    rows.push([d.p.jersey_number, d.p.name, profileNames[r.evaluator_id] || "",
+      r.overall, r.skating, r.compete, r.hockey_iq, r.notes || ""])));
+  downloadCSV("tryout-detail.csv", rows);
+};
+
+/* util */
+function esc(s){ const d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
+
+init();
+</script>
+</body>
+</html>
