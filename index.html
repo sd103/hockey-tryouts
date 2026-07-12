@@ -36,12 +36,10 @@
   .banner.off{background:var(--warn);}
   .banner.ok{background:var(--good);}
 
-  /* category chips */
   .chips{display:flex;gap:6px;margin:2px 0 12px;overflow-x:auto;padding-bottom:2px;}
   .chips button{padding:9px 16px;font-size:14px;font-weight:700;background:#e2e9ed;color:var(--muted);border-radius:20px;white-space:nowrap;}
   .chips button.on{background:var(--teal);color:#fff;}
 
-  /* tables */
   .twrap{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px 8px;overflow-x:auto;margin-bottom:14px;}
   table{width:100%;border-collapse:collapse;font-size:14px;}
   th,td{padding:10px 6px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap;}
@@ -62,12 +60,10 @@
   .done{color:var(--good);font-weight:700;}
   .pend{color:var(--warn);font-weight:700;}
 
-  /* tabs */
   .tabs{display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;}
   .tabs button{flex:1;padding:11px 10px;font-size:13px;font-weight:700;background:#e2e9ed;color:var(--muted);white-space:nowrap;}
   .tabs button.on{background:var(--ink);color:#fff;border-bottom:3px solid var(--teal);}
 
-  /* score buttons */
   .scale{display:flex;gap:8px;margin-top:4px;}
   .scale button{flex:1;padding:14px 0;font-size:18px;font-weight:800;background:#e2e9ed;color:var(--ink);}
   .scale button.sel{background:var(--teal);color:#fff;}
@@ -80,7 +76,6 @@
   .count{font-size:13px;color:var(--muted);margin-left:auto;}
   .back{background:none;color:#fff;font-size:22px;padding:0 8px;}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-  .grid3{display:grid;grid-template-columns:80px 1fr 1fr;gap:8px;}
   .link{background:none;color:var(--teal-dark);text-decoration:underline;font-size:13px;padding:4px;}
   .link.del{color:var(--bad);}
   .statgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:12px;}
@@ -180,8 +175,11 @@
           <div><label>First name</label><input id="pFirst"></div>
           <div><label>Last name</label><input id="pLast"></div>
         </div>
-        <div class="grid3">
+        <div class="grid2">
           <div><label>#</label><input id="pNum" type="number"></div>
+          <div><label>Birth year</label><input id="pBirth" type="number" placeholder="e.g. 2014"></div>
+        </div>
+        <div class="grid2">
           <div><label>Position</label>
             <select id="pPos">
               <option value="F">Forward</option><option value="D">Defence</option><option value="G">Goalie</option>
@@ -207,7 +205,8 @@
       <div class="card">
         <h3 style="margin-top:0;">Import players from CSV</h3>
         <p style="font-size:13px;color:var(--muted);margin:4px 0 10px;">
-          Columns: first_name, last_name, jersey_number, position (F/D/G), category (M11/M13/M15/M18), level_last_year, organisation.
+          Columns: first_name, last_name, birth_year, jersey_number, position (F/D/G), category (M11/M13/M15/M18),
+          level_last_year, organisation. Category is optional when birth_year is given — it's assigned automatically.
         </p>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
           <button id="csvTemplateBtn" class="btn small dark">Download template</button>
@@ -221,7 +220,7 @@
       <div class="chips" id="rosterChips"></div>
       <div class="twrap">
         <table>
-          <thead><tr><th class="num">#</th><th>Name</th><th class="num">Pos</th><th class="num">Cat</th>
+          <thead><tr><th class="num">#</th><th>Name</th><th class="num">Born</th><th class="num">Pos</th><th class="num">Cat</th>
           <th class="opt">Level</th><th class="opt">Org</th><th></th></tr></thead>
           <tbody id="rosterTable"></tbody>
         </table>
@@ -277,6 +276,7 @@
 const SUPABASE_URL = "https://zmurervbsodzjlzcpqvt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_7aFQ-qkRpqCKgZ812NjeZA_NRT9osTP";
 const SCALE_MAX = 5; // 1 = best, 5 = worst
+const SEASON_YEAR = 2026; // season start year — used to derive age category from birth year
 const CATS = [
   { key:"skating",   label:"Skating" },
   { key:"compete",   label:"Compete" },
@@ -284,6 +284,19 @@ const CATS = [
   { key:"overall",   label:"Overall", main:true }
 ];
 const AGE_CATS = ["M11","M13","M15","M18"];
+
+// Hockey Québec: age as of Dec 31 of season start year.
+// M11 = 9-10, M13 = 11-12, M15 = 13-14, M18 = 15-17
+function catFromBirthYear(y){
+  y = parseInt(y);
+  if (!y || y < 1990) return null;
+  const age = SEASON_YEAR - y;
+  if (age <= 10 && age >= 5) return "M11";
+  if (age <= 12) return "M13";
+  if (age <= 14) return "M15";
+  if (age <= 17) return "M18";
+  return null;
+}
 
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -402,7 +415,7 @@ function sortRows(rows, sort, getVal){
     let va = getVal(a, sort.key), vb = getVal(b, sort.key);
     const aNull = va == null || va === "", bNull = vb == null || vb === "";
     if (aNull && bNull) return 0;
-    if (aNull) return 1;              // empty values always last
+    if (aNull) return 1;
     if (bNull) return -1;
     if (typeof va === "string") { va = va.toLowerCase(); vb = String(vb).toLowerCase(); }
     if (va < vb) return sort.asc ? -1 : 1;
@@ -504,7 +517,7 @@ function openScore(p){
   draft = { skating: existing.skating||null, compete: existing.compete||null,
             hockey_iq: existing.hockey_iq||null, overall: existing.overall||null };
   $("scorePlayerName").textContent = "#" + (p.jersey_number ?? "–") + " " + fullName(p);
-  $("scorePlayerInfo").textContent = [p.category, p.position, p.organisation, p.level_last_year].filter(Boolean).join(" · ");
+  $("scorePlayerInfo").textContent = [p.category, p.position, p.birth_year, p.organisation, p.level_last_year].filter(Boolean).join(" · ");
   $("scoreNotes").value = existing.notes || "";
   $("scoreErr").textContent = "";
   renderCatButtons();
@@ -653,11 +666,16 @@ Object.keys(TABS).forEach(t => {
 });
 
 /* ---------- roster ---------- */
+$("pBirth").addEventListener("input", () => {
+  const c = catFromBirthYear($("pBirth").value);
+  if (c) $("pCat").value = c;
+});
 function readPlayerForm(){
   return {
     first_name: $("pFirst").value.trim(),
     last_name: $("pLast").value.trim(),
     jersey_number: parseInt($("pNum").value) || null,
+    birth_year: parseInt($("pBirth").value) || null,
     position: $("pPos").value,
     category: $("pCat").value,
     level_last_year: $("pLevel").value.trim() || null,
@@ -665,7 +683,7 @@ function readPlayerForm(){
   };
 }
 function clearPlayerForm(){
-  ["pFirst","pLast","pNum","pLevel","pOrg"].forEach(id => $(id).value = "");
+  ["pFirst","pLast","pNum","pBirth","pLevel","pOrg"].forEach(id => $(id).value = "");
   editingId = null;
   $("pFormTitle").textContent = "Add player";
   $("savePlayerBtn").textContent = "Add player";
@@ -690,7 +708,8 @@ function renderRoster(){
   players.filter(p => rosterCat === "All" || p.category === rosterCat).forEach(p => {
     const tr = document.createElement("tr");
     tr.innerHTML = '<td class="num"><b>'+(p.jersey_number ?? "–")+'</b></td>' +
-      '<td>'+esc(fullName(p))+'</td><td class="num">'+esc(p.position||"–")+'</td>' +
+      '<td>'+esc(fullName(p))+'</td><td class="num">'+(p.birth_year ?? "–")+'</td>' +
+      '<td class="num">'+esc(p.position||"–")+'</td>' +
       '<td class="num">'+p.category+'</td><td class="opt">'+esc(p.level_last_year||"")+'</td>' +
       '<td class="opt">'+esc(p.organisation||"")+'</td>';
     const td = document.createElement("td");
@@ -699,7 +718,8 @@ function renderRoster(){
     edit.onclick = () => {
       editingId = p.id;
       $("pFirst").value = p.first_name; $("pLast").value = p.last_name;
-      $("pNum").value = p.jersey_number ?? ""; $("pPos").value = p.position || "F";
+      $("pNum").value = p.jersey_number ?? ""; $("pBirth").value = p.birth_year ?? "";
+      $("pPos").value = p.position || "F";
       $("pCat").value = p.category; $("pLevel").value = p.level_last_year || "";
       $("pOrg").value = p.organisation || "";
       $("pFormTitle").textContent = "Edit player";
@@ -739,8 +759,8 @@ function parseCSV(text){
 }
 $("csvTemplateBtn").onclick = () => {
   downloadCSV("players-template.csv", [
-    ["first_name","last_name","jersey_number","position","category","level_last_year","organisation"],
-    ["Alex","Tremblay","17","F","M13","A","CHA"]
+    ["first_name","last_name","birth_year","jersey_number","position","category","level_last_year","organisation"],
+    ["Alex","Tremblay","2014","17","F","","A","CHA"]
   ]);
 };
 $("csvImportBtn").onclick = async () => {
@@ -750,24 +770,32 @@ $("csvImportBtn").onclick = async () => {
   const rows = parseCSV(await f.text());
   if (rows.length < 2){ $("csvErr").textContent = "File appears empty."; return; }
   const header = rows[0].map(h => h.trim().toLowerCase().replace(/\s+/g,"_"));
-  const need = ["first_name","last_name","category"];
-  for (const n of need) if (!header.includes(n)){
+  for (const n of ["first_name","last_name"]) if (!header.includes(n)){
     $("csvErr").textContent = 'Missing required column: ' + n; return;
   }
+  if (!header.includes("category") && !header.includes("birth_year")){
+    $("csvErr").textContent = "Need a category or birth_year column."; return;
+  }
   const idx = k => header.indexOf(k);
+  const val = (r,k) => idx(k) >= 0 ? (r[idx(k)]||"").trim() : "";
   const recs = [], problems = [];
   rows.slice(1).forEach((r, i) => {
-    const cat = (r[idx("category")] || "").trim().toUpperCase();
-    if (!AGE_CATS.includes(cat)){ problems.push("Row "+(i+2)+": bad category '"+cat+"'"); return; }
-    const first = (r[idx("first_name")]||"").trim(), last = (r[idx("last_name")]||"").trim();
+    const first = val(r,"first_name"), last = val(r,"last_name");
     if (!first || !last){ problems.push("Row "+(i+2)+": missing name"); return; }
+    const by = parseInt(val(r,"birth_year")) || null;
+    let cat = val(r,"category").toUpperCase();
+    if (!cat && by) cat = catFromBirthYear(by) || "";
+    if (!AGE_CATS.includes(cat)){
+      problems.push("Row "+(i+2)+": can't determine category" + (by ? " from birth year "+by : "")); return;
+    }
     recs.push({
       first_name: first, last_name: last,
-      jersey_number: idx("jersey_number") >= 0 ? (parseInt(r[idx("jersey_number")]) || null) : null,
-      position: idx("position") >= 0 ? (r[idx("position")]||"").trim().toUpperCase() || null : null,
+      birth_year: by,
+      jersey_number: parseInt(val(r,"jersey_number")) || null,
+      position: val(r,"position").toUpperCase() || null,
       category: cat,
-      level_last_year: idx("level_last_year") >= 0 ? (r[idx("level_last_year")]||"").trim() || null : null,
-      organisation: idx("organisation") >= 0 ? (r[idx("organisation")]||"").trim() || null : null
+      level_last_year: val(r,"level_last_year") || null,
+      organisation: val(r,"organisation") || null
     });
   });
   if (problems.length){ $("csvErr").textContent = problems.slice(0,5).join(" · ") + (problems.length>5 ? " (+"+(problems.length-5)+" more)" : ""); if (!recs.length) return; }
@@ -866,23 +894,23 @@ function downloadCSV(name, rows){
   a.click();
 }
 $("exportSummaryBtn").onclick = () => {
-  const rows = [["Category","Type","Rank","Jersey","First name","Last name","Position","Org","Level","Avg Overall","Avg Skating","Avg Compete","Avg Hockey IQ","# Evals"]];
+  const rows = [["Category","Type","Rank","Jersey","First name","Last name","Birth year","Position","Org","Level","Avg Overall","Avg Skating","Avg Compete","Avg Hockey IQ","# Evals"]];
   AGE_CATS.forEach(cat => {
     [["Skater", p => !isGoalie(p)], ["Goalie", isGoalie]].forEach(([type, test]) => {
       const list = playerAgg(players.filter(p => p.category === cat && test(p)))
         .sort((a,b) => (a.overall ?? 99) - (b.overall ?? 99));
       list.forEach((d,i) => rows.push([cat, type, i+1, d.p.jersey_number, d.p.first_name, d.p.last_name,
-        d.p.position, d.p.organisation, d.p.level_last_year,
+        d.p.birth_year, d.p.position, d.p.organisation, d.p.level_last_year,
         fmt(d.overall), fmt(d.skating), fmt(d.compete), fmt(d.hockey_iq), d.rows.length]));
     });
   });
   downloadCSV("tryout-summary.csv", rows);
 };
 $("exportDetailBtn").onclick = () => {
-  const rows = [["Category","Jersey","First name","Last name","Position","Evaluator","Overall","Skating","Compete","Hockey IQ","Notes"]];
+  const rows = [["Category","Jersey","First name","Last name","Birth year","Position","Evaluator","Overall","Skating","Compete","Hockey IQ","Notes"]];
   players.forEach(p => {
     allScores.filter(s => s.player_id === p.id).forEach(r =>
-      rows.push([p.category, p.jersey_number, p.first_name, p.last_name, p.position,
+      rows.push([p.category, p.jersey_number, p.first_name, p.last_name, p.birth_year, p.position,
         profileNames[r.evaluator_id] || "", r.overall, r.skating, r.compete, r.hockey_iq, r.notes || ""]));
   });
   downloadCSV("tryout-detail.csv", rows);
