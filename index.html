@@ -35,6 +35,7 @@
   .banner{padding:8px 14px;font-size:13px;font-weight:600;text-align:center;color:#fff;}
   .banner.off{background:var(--warn);}
   .banner.ok{background:var(--good);}
+  .warncard{background:#fdf3e7;border:1px solid var(--warn);color:#9a5b00;border-radius:12px;padding:10px 14px;margin-bottom:12px;font-size:13px;font-weight:600;}
 
   .chips{display:flex;gap:6px;margin:2px 0 12px;overflow-x:auto;padding-bottom:2px;}
   .chips button{padding:9px 16px;font-size:14px;font-weight:700;background:#e2e9ed;color:var(--muted);border-radius:20px;white-space:nowrap;}
@@ -49,9 +50,11 @@
   td.num,th.num{text-align:center;}
   tr.rowlink{cursor:pointer;}
   tr.rowlink:active,tr.rowlink:hover{background:#eef6f9;}
+  tr.misswarn{background:#fdf3e7;}
   .avg{font-weight:800;color:var(--teal-dark);font-size:15px;}
   .secttitle{font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--ink);margin:14px 2px 6px;display:flex;align-items:baseline;gap:8px;}
   .secttitle span{font-size:12px;color:var(--muted);font-weight:600;text-transform:none;}
+  .secttitle.unc{color:var(--warn);}
   .detail{background:#f6fafb;}
   .detail td{padding:8px 12px;white-space:normal;}
   .evalnote{margin:6px 0;padding:8px 10px;background:#fff;border:1px solid var(--line);border-radius:8px;font-size:13px;}
@@ -177,7 +180,7 @@
         </div>
         <div class="grid2">
           <div><label>#</label><input id="pNum" type="number"></div>
-          <div><label>Birth year</label><input id="pBirth" type="number" placeholder="e.g. 2014"></div>
+          <div><label>Birth date</label><input id="pBirth" type="date"></div>
         </div>
         <div class="grid2">
           <div><label>Position</label>
@@ -205,8 +208,9 @@
       <div class="card">
         <h3 style="margin-top:0;">Import players from CSV</h3>
         <p style="font-size:13px;color:var(--muted);margin:4px 0 10px;">
-          Columns: first_name, last_name, birth_year, jersey_number, position (F/D/G), category (M11/M13/M15/M18),
-          level_last_year, organisation. Category is optional when birth_year is given — it's assigned automatically.
+          Columns: first_name, last_name, birth_date, jersey_number, position (F/D/G), category (M11/M13/M15/M18),
+          level_last_year, organisation. Only last_name is required — players with missing info are imported anyway and flagged.
+          Category is auto-assigned from birth date when blank.
         </p>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
           <button id="csvTemplateBtn" class="btn small dark">Download template</button>
@@ -217,6 +221,7 @@
         <div class="ok-msg" id="csvOk"></div>
       </div>
 
+      <div id="rosterWarn"></div>
       <div class="chips" id="rosterChips"></div>
       <div class="twrap">
         <table>
@@ -276,7 +281,7 @@
 const SUPABASE_URL = "https://zmurervbsodzjlzcpqvt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_7aFQ-qkRpqCKgZ812NjeZA_NRT9osTP";
 const SCALE_MAX = 5; // 1 = best, 5 = worst
-const SEASON_YEAR = 2026; // season start year — used to derive age category from birth year
+const SEASON_YEAR = 2026; // season start year — used to derive age category from birth date
 const CATS = [
   { key:"skating",   label:"Skating" },
   { key:"compete",   label:"Compete" },
@@ -284,6 +289,7 @@ const CATS = [
   { key:"overall",   label:"Overall", main:true }
 ];
 const AGE_CATS = ["M11","M13","M15","M18"];
+const UNC = "__unc__"; // marker for players with no category
 
 // Hockey Québec: age as of Dec 31 of season start year.
 // M11 = 9-10, M13 = 11-12, M15 = 13-14, M18 = 15-17
@@ -295,6 +301,23 @@ function catFromBirthYear(y){
   if (age <= 12) return "M13";
   if (age <= 14) return "M15";
   if (age <= 17) return "M18";
+  return null;
+}
+function catFromBirthDate(d){ return d ? catFromBirthYear(String(d).slice(0,4)) : null; }
+function pad2(n){ return String(n).padStart(2,"0"); }
+// Accepts YYYY-MM-DD, YYYY/MM/DD, DD/MM/YYYY, MM/DD/YYYY (assumes DD/MM when ambiguous)
+function parseCSVDate(s){
+  s = (s || "").trim();
+  if (!s) return null;
+  let m = s.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})$/);
+  if (m) return m[1] + "-" + pad2(m[2]) + "-" + pad2(m[3]);
+  m = s.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/);
+  if (m){
+    let a = +m[1], b = +m[2], day = a, mon = b;
+    if (a <= 12 && b > 12){ mon = a; day = b; }   // clearly MM/DD
+    if (mon < 1 || mon > 12 || day < 1 || day > 31) return null;
+    return m[3] + "-" + pad2(mon) + "-" + pad2(day);
+  }
   return null;
 }
 
@@ -324,9 +347,20 @@ function show(view){
   $("signOutBtn").classList.toggle("hidden", view==="loginView");
 }
 function esc(s){ const d = document.createElement("div"); d.textContent = s ?? ""; return d.innerHTML; }
-function fullName(p){ return p.first_name + " " + p.last_name; }
+function fullName(p){ return (p.first_name ? p.first_name + " " : "") + p.last_name; }
 function isGoalie(p){ return (p.position || "").trim().toLowerCase().startsWith("g"); }
 function fmt(n){ return n == null ? "–" : (Math.round(n*10)/10).toFixed(1); }
+function playerIssues(p){
+  const miss = [];
+  if (!p.first_name) miss.push("first name");
+  if (p.jersey_number == null) miss.push("number");
+  if (!p.birth_date) miss.push("birth date");
+  if (!p.position) miss.push("position");
+  if (!p.category) miss.push("category");
+  return miss;
+}
+function inGroup(p, cat){ return cat === UNC ? !p.category : p.category === cat; }
+function groupLabel(cat){ return cat === UNC ? "Uncategorized" : cat; }
 
 /* ================= OFFLINE QUEUE ================= */
 function qKey(){ return "pendingScores_" + (me ? me.id : "anon"); }
@@ -465,14 +499,14 @@ function renderEvalTables(){
     (evalCat === "All" || p.category === evalCat) &&
     (!filter || fullName(p).toLowerCase().includes(filter) || String(p.jersey_number).includes(filter)));
 
-  const groups = evalCat === "All" ? AGE_CATS : [evalCat];
+  const groups = evalCat === "All" ? [...AGE_CATS, UNC] : [evalCat];
   groups.forEach(cat => {
-    const inCat = pool.filter(p => p.category === cat);
+    const inCat = pool.filter(p => inGroup(p, cat));
     if (!inCat.length) return;
     [["Skaters", inCat.filter(p => !isGoalie(p))], ["Goalies", inCat.filter(isGoalie)]].forEach(([title, list]) => {
       if (!list.length) return;
       wrap.insertAdjacentHTML("beforeend",
-        '<div class="secttitle">'+cat+' '+title+' <span>('+list.length+')</span></div>');
+        '<div class="secttitle'+(cat===UNC?" unc":"")+'">'+groupLabel(cat)+' '+title+' <span>('+list.length+')</span></div>');
       const tw = document.createElement("div");
       tw.className = "twrap";
       const getVal = (p, k) => {
@@ -517,7 +551,7 @@ function openScore(p){
   draft = { skating: existing.skating||null, compete: existing.compete||null,
             hockey_iq: existing.hockey_iq||null, overall: existing.overall||null };
   $("scorePlayerName").textContent = "#" + (p.jersey_number ?? "–") + " " + fullName(p);
-  $("scorePlayerInfo").textContent = [p.category, p.position, p.birth_year, p.organisation, p.level_last_year].filter(Boolean).join(" · ");
+  $("scorePlayerInfo").textContent = [p.category, p.position, p.birth_date, p.organisation, p.level_last_year].filter(Boolean).join(" · ");
   $("scoreNotes").value = existing.notes || "";
   $("scoreErr").textContent = "";
   renderCatButtons();
@@ -599,14 +633,14 @@ function renderAdminTables(){
   const wrap = $("adminTables");
   wrap.innerHTML = "";
   const pool = players.filter(p => adminCat === "All" || p.category === adminCat);
-  const groups = adminCat === "All" ? AGE_CATS : [adminCat];
+  const groups = adminCat === "All" ? [...AGE_CATS, UNC] : [adminCat];
   groups.forEach(cat => {
-    const inCat = pool.filter(p => p.category === cat);
+    const inCat = pool.filter(p => inGroup(p, cat));
     if (!inCat.length) return;
     [["Skaters", inCat.filter(p => !isGoalie(p))], ["Goalies", inCat.filter(isGoalie)]].forEach(([title, list]) => {
       if (!list.length) return;
       wrap.insertAdjacentHTML("beforeend",
-        '<div class="secttitle">'+cat+' '+title+' <span>('+list.length+')</span></div>');
+        '<div class="secttitle'+(cat===UNC?" unc":"")+'">'+groupLabel(cat)+' '+title+' <span>('+list.length+')</span></div>');
       const tw = document.createElement("div");
       tw.className = "twrap";
       const getVal = (d, k) => {
@@ -667,15 +701,15 @@ Object.keys(TABS).forEach(t => {
 
 /* ---------- roster ---------- */
 $("pBirth").addEventListener("input", () => {
-  const c = catFromBirthYear($("pBirth").value);
+  const c = catFromBirthDate($("pBirth").value);
   if (c) $("pCat").value = c;
 });
 function readPlayerForm(){
   return {
-    first_name: $("pFirst").value.trim(),
+    first_name: $("pFirst").value.trim() || null,
     last_name: $("pLast").value.trim(),
     jersey_number: parseInt($("pNum").value) || null,
-    birth_year: parseInt($("pBirth").value) || null,
+    birth_date: $("pBirth").value || null,
     position: $("pPos").value,
     category: $("pCat").value,
     level_last_year: $("pLevel").value.trim() || null,
@@ -693,7 +727,7 @@ $("cancelEditBtn").onclick = clearPlayerForm;
 $("savePlayerBtn").onclick = async () => {
   $("rosterErr").textContent = "";
   const row = readPlayerForm();
-  if (!row.first_name || !row.last_name){ $("rosterErr").textContent = "First and last name required."; return; }
+  if (!row.last_name){ $("rosterErr").textContent = "Last name is required."; return; }
   let error;
   if (editingId) ({ error } = await db.from("players").update(row).eq("id", editingId));
   else ({ error } = await db.from("players").insert(row));
@@ -703,14 +737,23 @@ $("savePlayerBtn").onclick = async () => {
 };
 function renderRoster(){
   renderChips("rosterChips", rosterCat, c => { rosterCat = c; renderRoster(); });
+  const missing = players.filter(p => playerIssues(p).length);
+  $("rosterWarn").innerHTML = missing.length
+    ? '<div class="warncard">&#9888; ' + missing.length + ' player' + (missing.length>1?"s":"") +
+      ' with missing info — highlighted below. Tap Edit to complete.</div>'
+    : "";
   const tb = $("rosterTable");
   tb.innerHTML = "";
   players.filter(p => rosterCat === "All" || p.category === rosterCat).forEach(p => {
+    const issues = playerIssues(p);
     const tr = document.createElement("tr");
+    if (issues.length){ tr.className = "misswarn"; tr.title = "Missing: " + issues.join(", "); }
     tr.innerHTML = '<td class="num"><b>'+(p.jersey_number ?? "–")+'</b></td>' +
-      '<td>'+esc(fullName(p))+'</td><td class="num">'+(p.birth_year ?? "–")+'</td>' +
+      '<td>'+esc(fullName(p))+(issues.length?' <span class="pend">&#9888;</span>':'')+'</td>' +
+      '<td class="num">'+(p.birth_date ?? "–")+'</td>' +
       '<td class="num">'+esc(p.position||"–")+'</td>' +
-      '<td class="num">'+p.category+'</td><td class="opt">'+esc(p.level_last_year||"")+'</td>' +
+      '<td class="num">'+(p.category || '<span class="pend">?</span>')+'</td>' +
+      '<td class="opt">'+esc(p.level_last_year||"")+'</td>' +
       '<td class="opt">'+esc(p.organisation||"")+'</td>';
     const td = document.createElement("td");
     const edit = document.createElement("button");
@@ -718,9 +761,10 @@ function renderRoster(){
     edit.onclick = () => {
       editingId = p.id;
       $("pFirst").value = p.first_name; $("pLast").value = p.last_name;
-      $("pNum").value = p.jersey_number ?? ""; $("pBirth").value = p.birth_year ?? "";
+      $("pNum").value = p.jersey_number ?? ""; $("pBirth").value = p.birth_date ?? "";
       $("pPos").value = p.position || "F";
-      $("pCat").value = p.category; $("pLevel").value = p.level_last_year || "";
+      $("pCat").value = p.category || (catFromBirthDate(p.birth_date) || "M11");
+      $("pLevel").value = p.level_last_year || "";
       $("pOrg").value = p.organisation || "";
       $("pFormTitle").textContent = "Edit player";
       $("savePlayerBtn").textContent = "Save changes";
@@ -759,8 +803,8 @@ function parseCSV(text){
 }
 $("csvTemplateBtn").onclick = () => {
   downloadCSV("players-template.csv", [
-    ["first_name","last_name","birth_year","jersey_number","position","category","level_last_year","organisation"],
-    ["Alex","Tremblay","2014","17","F","","A","CHA"]
+    ["first_name","last_name","birth_date","jersey_number","position","category","level_last_year","organisation"],
+    ["Alex","Tremblay","2014-05-20","17","F","","A","CHA"]
   ]);
 };
 $("csvImportBtn").onclick = async () => {
@@ -770,44 +814,45 @@ $("csvImportBtn").onclick = async () => {
   const rows = parseCSV(await f.text());
   if (rows.length < 2){ $("csvErr").textContent = "File appears empty."; return; }
   const header = rows[0].map(h => h.trim().toLowerCase().replace(/\s+/g,"_"));
-  for (const n of ["first_name","last_name"]) if (!header.includes(n)){
-    $("csvErr").textContent = 'Missing required column: ' + n; return;
-  }
-  if (!header.includes("category") && !header.includes("birth_year")){
-    $("csvErr").textContent = "Need a category or birth_year column."; return;
+  if (!header.includes("last_name")){
+    $("csvErr").textContent = 'Missing required column: last_name'; return;
   }
   const idx = k => header.indexOf(k);
   const val = (r,k) => idx(k) >= 0 ? (r[idx(k)]||"").trim() : "";
-  const recs = [], problems = [];
+  const recs = [], skipped = [];
+  let flagged = 0;
   rows.slice(1).forEach((r, i) => {
     const first = val(r,"first_name"), last = val(r,"last_name");
-    if (!first || !last){ problems.push("Row "+(i+2)+": missing name"); return; }
-    const by = parseInt(val(r,"birth_year")) || null;
+    if (!last){ skipped.push("Row "+(i+2)+": missing last name"); return; }
+    const bd = parseCSVDate(val(r,"birth_date") || val(r,"birth_year"));
     let cat = val(r,"category").toUpperCase();
-    if (!cat && by) cat = catFromBirthYear(by) || "";
-    if (!AGE_CATS.includes(cat)){
-      problems.push("Row "+(i+2)+": can't determine category" + (by ? " from birth year "+by : "")); return;
-    }
-    recs.push({
-      first_name: first, last_name: last,
-      birth_year: by,
+    if (!AGE_CATS.includes(cat)) cat = catFromBirthDate(bd);
+    const rec = {
+      first_name: first || null, last_name: last,
+      birth_date: bd,
       jersey_number: parseInt(val(r,"jersey_number")) || null,
       position: val(r,"position").toUpperCase() || null,
-      category: cat,
+      category: AGE_CATS.includes(cat) ? cat : null,
       level_last_year: val(r,"level_last_year") || null,
       organisation: val(r,"organisation") || null
-    });
+    };
+    if (playerIssues(rec).length) flagged++;
+    recs.push(rec);
   });
-  if (problems.length){ $("csvErr").textContent = problems.slice(0,5).join(" · ") + (problems.length>5 ? " (+"+(problems.length-5)+" more)" : ""); if (!recs.length) return; }
-  if (!recs.length){ $("csvErr").textContent = "No valid rows found."; return; }
+  if (!recs.length){ $("csvErr").textContent = skipped.length ? skipped.slice(0,5).join(" · ") : "No valid rows found."; return; }
   $("csvImportBtn").disabled = true;
   let inserted = 0, failed = 0;
   for (let i=0; i<recs.length; i+=100){
-    const { error } = await db.from("players").insert(recs.slice(i, i+100));
-    if (error) failed += recs.slice(i, i+100).length; else inserted += Math.min(100, recs.length - i);
+    const chunk = recs.slice(i, i+100);
+    const { error } = await db.from("players").insert(chunk);
+    if (error) failed += chunk.length; else inserted += chunk.length;
   }
   $("csvImportBtn").disabled = false;
-  $("csvOk").textContent = inserted + " players imported." + (failed ? " " + failed + " failed." : "");
+  let msg = inserted + " players imported.";
+  if (flagged) msg += " " + flagged + " with missing info — highlighted in the roster below.";
+  if (failed) msg += " " + failed + " failed to save.";
+  $("csvOk").textContent = msg;
+  if (skipped.length) $("csvErr").textContent = "Skipped (no name): " + skipped.slice(0,3).join(" · ") + (skipped.length>3 ? " (+"+(skipped.length-3)+" more)" : "");
   $("csvFile").value = "";
   await loadPlayers(); renderRoster(); renderAdminTables();
 };
@@ -860,7 +905,7 @@ function renderActivity(){
     const mine = allScores.filter(s => s.evaluator_id === ev.id);
     const byCat = {};
     AGE_CATS.forEach(c => byCat[c] = 0);
-    mine.forEach(s => { const p = playerById[s.player_id]; if (p) byCat[p.category]++; });
+    mine.forEach(s => { const p = playerById[s.player_id]; if (p && p.category) byCat[p.category]++; });
     const last = mine.length ? new Date(Math.max(...mine.map(s => new Date(s.updated_at)))) : null;
     const tr = document.createElement("tr");
     tr.innerHTML = '<td>'+esc(ev.display_name)+'</td><td class="num"><b>'+mine.length+'</b></td>' +
@@ -894,23 +939,23 @@ function downloadCSV(name, rows){
   a.click();
 }
 $("exportSummaryBtn").onclick = () => {
-  const rows = [["Category","Type","Rank","Jersey","First name","Last name","Birth year","Position","Org","Level","Avg Overall","Avg Skating","Avg Compete","Avg Hockey IQ","# Evals"]];
-  AGE_CATS.forEach(cat => {
+  const rows = [["Category","Type","Rank","Jersey","First name","Last name","Birth date","Position","Org","Level","Avg Overall","Avg Skating","Avg Compete","Avg Hockey IQ","# Evals"]];
+  [...AGE_CATS, UNC].forEach(cat => {
     [["Skater", p => !isGoalie(p)], ["Goalie", isGoalie]].forEach(([type, test]) => {
-      const list = playerAgg(players.filter(p => p.category === cat && test(p)))
+      const list = playerAgg(players.filter(p => inGroup(p, cat) && test(p)))
         .sort((a,b) => (a.overall ?? 99) - (b.overall ?? 99));
-      list.forEach((d,i) => rows.push([cat, type, i+1, d.p.jersey_number, d.p.first_name, d.p.last_name,
-        d.p.birth_year, d.p.position, d.p.organisation, d.p.level_last_year,
+      list.forEach((d,i) => rows.push([groupLabel(cat), type, i+1, d.p.jersey_number, d.p.first_name, d.p.last_name,
+        d.p.birth_date, d.p.position, d.p.organisation, d.p.level_last_year,
         fmt(d.overall), fmt(d.skating), fmt(d.compete), fmt(d.hockey_iq), d.rows.length]));
     });
   });
   downloadCSV("tryout-summary.csv", rows);
 };
 $("exportDetailBtn").onclick = () => {
-  const rows = [["Category","Jersey","First name","Last name","Birth year","Position","Evaluator","Overall","Skating","Compete","Hockey IQ","Notes"]];
+  const rows = [["Category","Jersey","First name","Last name","Birth date","Position","Evaluator","Overall","Skating","Compete","Hockey IQ","Notes"]];
   players.forEach(p => {
     allScores.filter(s => s.player_id === p.id).forEach(r =>
-      rows.push([p.category, p.jersey_number, p.first_name, p.last_name, p.birth_year, p.position,
+      rows.push([p.category || "Uncategorized", p.jersey_number, p.first_name, p.last_name, p.birth_date, p.position,
         profileNames[r.evaluator_id] || "", r.overall, r.skating, r.compete, r.hockey_iq, r.notes || ""]));
   });
   downloadCSV("tryout-detail.csv", rows);
