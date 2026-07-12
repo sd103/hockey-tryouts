@@ -3,88 +3,104 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<title>Hockey Tryout Evaluations</title>
+<title>C.H.A Grizzlies — Tryout Evaluations</title>
 <style>
   :root{
-    --bg:#f4f6f8; --card:#fff; --ink:#1a2430; --muted:#68778a;
-    --accent:#c8102e; --accent2:#00205b; --line:#dde3ea;
-    --good:#1e8e3e; --warn:#e37400;
+    --teal:#1B9EC0; --teal-dark:#12718a; --ink:#0D1418; --paper:#f2f5f7;
+    --card:#fff; --muted:#5f7078; --line:#d9e2e7;
+    --good:#1e8e3e; --warn:#e37400; --bad:#c0392b;
   }
-  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
-  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);}
-  header{background:var(--accent2);color:#fff;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10;}
-  header h1{font-size:17px;margin:0;font-weight:600;}
-  header .sub{font-size:12px;opacity:.8;}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--paper);color:var(--ink);}
+  header{background:var(--ink);color:#fff;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10;border-bottom:3px solid var(--teal);}
+  header .brand{display:flex;align-items:center;gap:10px;}
+  header img{height:44px;width:auto;}
+  header h1{font-size:16px;margin:0;font-weight:800;letter-spacing:.04em;text-transform:uppercase;}
+  header .sub{font-size:11px;color:var(--teal);font-weight:600;}
   .hbtns{display:flex;gap:8px;align-items:center;}
-  main{max-width:860px;margin:0 auto;padding:12px;}
+  main{max-width:960px;margin:0 auto;padding:12px;}
   .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:12px;}
   button{font:inherit;border:0;border-radius:10px;cursor:pointer;}
-  .btn{background:var(--accent2);color:#fff;padding:12px 18px;font-size:16px;font-weight:600;}
-  .btn.red{background:var(--accent);}
-  .btn.ghost{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.5);padding:8px 12px;font-size:13px;}
-  .btn.small{padding:8px 12px;font-size:14px;}
+  .btn{background:var(--teal);color:#fff;padding:12px 18px;font-size:15px;font-weight:700;}
+  .btn.dark{background:var(--ink);}
+  .btn.ghost{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.4);padding:7px 11px;font-size:13px;}
+  .btn.small{padding:8px 12px;font-size:13px;}
   .btn:disabled{opacity:.5;cursor:default;}
-  input,textarea,select{font:inherit;width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);}
+  input,textarea,select{font:inherit;width:100%;padding:11px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);}
   textarea{min-height:70px;resize:vertical;}
-  label{font-size:13px;font-weight:600;color:var(--muted);display:block;margin:10px 0 4px;}
+  label{font-size:12px;font-weight:700;color:var(--muted);display:block;margin:10px 0 4px;text-transform:uppercase;letter-spacing:.03em;}
   .hidden{display:none !important;}
-  .err{color:var(--accent);font-size:14px;margin-top:8px;min-height:18px;}
+  .err{color:var(--bad);font-size:14px;margin-top:8px;min-height:18px;}
+  .ok-msg{color:var(--good);font-size:14px;margin-top:8px;}
   .banner{padding:8px 14px;font-size:13px;font-weight:600;text-align:center;color:#fff;}
   .banner.off{background:var(--warn);}
   .banner.ok{background:var(--good);}
 
-  /* player list */
-  .plist{display:flex;flex-direction:column;gap:8px;}
-  .prow{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;cursor:pointer;}
-  .prow:active{background:#eef2f6;}
-  .pnum{font-size:18px;font-weight:800;color:var(--accent2);min-width:44px;text-align:center;background:#eef2f6;border-radius:8px;padding:8px 4px;}
-  .pname{flex:1;font-size:16px;font-weight:600;}
-  .pstat{font-size:13px;color:var(--muted);text-align:right;}
-  .pstat .done{color:var(--good);font-weight:700;}
-  .pstat .pend{color:var(--warn);font-weight:700;}
+  /* category chips */
+  .chips{display:flex;gap:6px;margin:2px 0 12px;overflow-x:auto;padding-bottom:2px;}
+  .chips button{padding:9px 16px;font-size:14px;font-weight:700;background:#e2e9ed;color:var(--muted);border-radius:20px;white-space:nowrap;}
+  .chips button.on{background:var(--teal);color:#fff;}
+
+  /* tables */
+  .twrap{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px 8px;overflow-x:auto;margin-bottom:14px;}
+  table{width:100%;border-collapse:collapse;font-size:14px;}
+  th,td{padding:10px 6px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap;}
+  th{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;cursor:pointer;user-select:none;}
+  th.sorted{color:var(--teal);}
+  th .arr{font-size:9px;}
+  td.num,th.num{text-align:center;}
+  tr.rowlink{cursor:pointer;}
+  tr.rowlink:active,tr.rowlink:hover{background:#eef6f9;}
+  .avg{font-weight:800;color:var(--teal-dark);font-size:15px;}
+  .secttitle{font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--ink);margin:14px 2px 6px;display:flex;align-items:baseline;gap:8px;}
+  .secttitle span{font-size:12px;color:var(--muted);font-weight:600;text-transform:none;}
+  .detail{background:#f6fafb;}
+  .detail td{padding:8px 12px;white-space:normal;}
+  .evalnote{margin:6px 0;padding:8px 10px;background:#fff;border:1px solid var(--line);border-radius:8px;font-size:13px;}
+  .evalnote b{color:var(--teal-dark);}
+  .evalnote .nums{color:var(--muted);font-size:12px;margin-left:4px;}
+  .done{color:var(--good);font-weight:700;}
+  .pend{color:var(--warn);font-weight:700;}
+
+  /* tabs */
+  .tabs{display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;}
+  .tabs button{flex:1;padding:11px 10px;font-size:13px;font-weight:700;background:#e2e9ed;color:var(--muted);white-space:nowrap;}
+  .tabs button.on{background:var(--ink);color:#fff;border-bottom:3px solid var(--teal);}
 
   /* score buttons */
   .scale{display:flex;gap:8px;margin-top:4px;}
-  .scale button{flex:1;padding:14px 0;font-size:18px;font-weight:700;background:#eef2f6;color:var(--ink);border:2px solid transparent;}
-  .scale button.sel{background:var(--accent2);color:#fff;}
+  .scale button{flex:1;padding:14px 0;font-size:18px;font-weight:800;background:#e2e9ed;color:var(--ink);}
+  .scale button.sel{background:var(--teal);color:#fff;}
+  .overall .scale button.sel{background:var(--ink);}
   .catlabel{display:flex;justify-content:space-between;align-items:baseline;margin:14px 0 2px;}
-  .catlabel b{font-size:15px;}
+  .catlabel b{font-size:15px;text-transform:uppercase;letter-spacing:.03em;}
   .catlabel span{font-size:12px;color:var(--muted);}
-  .overall .scale button.sel{background:var(--accent);}
 
-  /* admin table */
-  table{width:100%;border-collapse:collapse;font-size:14px;}
-  th,td{padding:10px 8px;border-bottom:1px solid var(--line);text-align:left;}
-  th{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;}
-  td.num,th.num{text-align:center;}
-  tr.expandable{cursor:pointer;}
-  tr.expandable:hover{background:#f0f3f7;}
-  .avg{font-weight:800;color:var(--accent);font-size:16px;}
-  .detail{background:#f8fafc;}
-  .detail td{padding:8px 12px;}
-  .evalnote{margin:6px 0;padding:8px 10px;background:#fff;border:1px solid var(--line);border-radius:8px;font-size:13px;}
-  .evalnote b{color:var(--accent2);}
-  .evalnote .nums{color:var(--muted);font-size:12px;margin-left:4px;}
-  .tabs{display:flex;gap:8px;margin-bottom:12px;}
-  .tabs button{flex:1;padding:12px;font-size:15px;font-weight:600;background:#e4e9ef;color:var(--muted);}
-  .tabs button.on{background:var(--accent2);color:#fff;}
-  .rosterrow{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);}
-  .rosterrow .pname{font-weight:500;}
-  .link{background:none;color:var(--accent2);text-decoration:underline;font-size:13px;padding:4px;}
   .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center;}
   .count{font-size:13px;color:var(--muted);margin-left:auto;}
   .back{background:none;color:#fff;font-size:22px;padding:0 8px;}
-  @media(max-width:600px){ th.opt, td.opt{display:none;} }
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .grid3{display:grid;grid-template-columns:80px 1fr 1fr;gap:8px;}
+  .link{background:none;color:var(--teal-dark);text-decoration:underline;font-size:13px;padding:4px;}
+  .link.del{color:var(--bad);}
+  .statgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:12px;}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;text-align:center;}
+  .stat .v{font-size:24px;font-weight:800;color:var(--teal-dark);}
+  .stat .l{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-top:2px;}
+  .eventrow{padding:8px 4px;border-bottom:1px solid var(--line);font-size:13px;}
+  .eventrow .t{color:var(--muted);font-size:11px;}
+  @media(max-width:640px){ .opt{display:none;} header h1{font-size:13px;} header img{height:36px;} }
 </style>
 </head>
 <body>
 
 <header>
-  <div style="display:flex;align-items:center;gap:6px;">
+  <div class="brand" style="display:flex;align-items:center;gap:6px;">
     <button id="backBtn" class="back hidden">&#8592;</button>
+    <img src="logo.png" alt="" onerror="this.style.display='none'">
     <div>
-      <h1 id="hTitle">Hockey Tryout Evaluations</h1>
-      <div class="sub" id="hSub"></div>
+      <h1>C.H.A Grizzlies</h1>
+      <div class="sub" id="hSub">Tryout Evaluations</div>
     </div>
   </div>
   <div class="hbtns">
@@ -92,41 +108,46 @@
   </div>
 </header>
 
-<div id="netBanner" class="banner off hidden">Offline — scores will be saved on this phone and sent when connection returns</div>
+<div id="netBanner" class="banner off hidden">Offline — scores are saved on this phone and will send when connection returns</div>
 <div id="queueBanner" class="banner ok hidden"></div>
 
 <main>
 
   <!-- LOGIN -->
   <section id="loginView" class="hidden">
-    <div class="card" style="max-width:420px;margin:40px auto;">
-      <h2 style="margin-top:0;">Evaluator sign in</h2>
-      <label>Email</label>
-      <input id="loginEmail" type="email" autocomplete="username" placeholder="you@example.com">
-      <label>Password</label>
-      <input id="loginPass" type="password" autocomplete="current-password">
+    <div class="card" style="max-width:420px;margin:40px auto;text-align:center;">
+      <img src="logo.png" alt="" style="height:110px;" onerror="this.style.display='none'">
+      <h2 style="margin:8px 0 16px;">Sign in</h2>
+      <div style="text-align:left;">
+        <label>Email</label>
+        <input id="loginEmail" type="email" autocomplete="username">
+        <label>Password</label>
+        <input id="loginPass" type="password" autocomplete="current-password">
+      </div>
       <div class="err" id="loginErr"></div>
       <button id="loginBtn" class="btn" style="width:100%;margin-top:8px;">Sign in</button>
     </div>
   </section>
 
-  <!-- EVALUATOR: player list -->
+  <!-- EVALUATOR: player tables -->
   <section id="evalListView" class="hidden">
+    <div class="chips" id="evalChips"></div>
     <div class="toolbar">
       <input id="searchBox" placeholder="Search name or number..." style="flex:1;">
     </div>
-    <div class="plist" id="playerList"></div>
+    <div id="evalTables"></div>
   </section>
 
-  <!-- EVALUATOR: scoring a player -->
+  <!-- EVALUATOR: scoring -->
   <section id="scoreView" class="hidden">
     <div class="card">
-      <h2 id="scorePlayerName" style="margin:0 0 4px;"></h2>
+      <h2 id="scorePlayerName" style="margin:0;"></h2>
+      <div id="scorePlayerInfo" style="font-size:13px;color:var(--muted);margin-top:2px;"></div>
       <div id="scoreCats"></div>
       <label>Notes (optional)</label>
       <textarea id="scoreNotes" placeholder="Quick observations..."></textarea>
       <div class="err" id="scoreErr"></div>
-      <button id="saveScoreBtn" class="btn red" style="width:100%;margin-top:10px;">Save score</button>
+      <button id="saveScoreBtn" class="btn dark" style="width:100%;margin-top:10px;">Save score</button>
     </div>
   </section>
 
@@ -135,38 +156,114 @@
     <div class="tabs">
       <button id="tabScores" class="on">Live scores</button>
       <button id="tabRoster">Roster</button>
+      <button id="tabEvals">Evaluators</button>
+      <button id="tabActivity">Activity</button>
     </div>
 
+    <!-- live scores -->
     <div id="adminScores">
+      <div class="chips" id="adminChips"></div>
       <div class="toolbar">
-        <button id="exportSummaryBtn" class="btn small">Export summary CSV</button>
-        <button id="exportDetailBtn" class="btn small">Export detail CSV</button>
+        <button id="exportSummaryBtn" class="btn small">Summary CSV</button>
+        <button id="exportDetailBtn" class="btn small">Detail CSV</button>
         <span class="count" id="scoreCount"></span>
       </div>
-      <div class="card" style="padding:6px 10px;overflow-x:auto;">
-        <table>
-          <thead><tr>
-            <th class="num">#</th><th>Player</th>
-            <th class="num">Overall</th><th class="num">Evals</th>
-            <th class="num opt">Skating</th><th class="num opt">Compete</th><th class="num opt">Hockey IQ</th>
-          </tr></thead>
-          <tbody id="scoreTable"></tbody>
-        </table>
-      </div>
-      <p style="font-size:12px;color:var(--muted);">Ranked by average overall score. Tap a row to see each evaluator's scores and notes. Updates live.</p>
+      <div id="adminTables"></div>
+      <p style="font-size:12px;color:var(--muted);">1 = best, 5 = worst. Ranked by average overall (lowest first). Tap a row for each evaluator's scores and notes. Updates live.</p>
     </div>
 
+    <!-- roster -->
     <div id="adminRoster" class="hidden">
       <div class="card">
-        <h3 style="margin-top:0;">Add player</h3>
-        <div style="display:flex;gap:8px;">
-          <input id="newNum" type="number" placeholder="#" style="width:80px;">
-          <input id="newName" placeholder="Player name" style="flex:1;">
-          <button id="addPlayerBtn" class="btn small">Add</button>
+        <h3 style="margin-top:0;" id="pFormTitle">Add player</h3>
+        <div class="grid2">
+          <div><label>First name</label><input id="pFirst"></div>
+          <div><label>Last name</label><input id="pLast"></div>
+        </div>
+        <div class="grid3">
+          <div><label>#</label><input id="pNum" type="number"></div>
+          <div><label>Position</label>
+            <select id="pPos">
+              <option value="F">Forward</option><option value="D">Defence</option><option value="G">Goalie</option>
+            </select>
+          </div>
+          <div><label>Category</label>
+            <select id="pCat">
+              <option>M11</option><option>M13</option><option>M15</option><option>M18</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid2">
+          <div><label>Level last year</label><input id="pLevel" placeholder="e.g. B, A, AA"></div>
+          <div><label>Organisation</label><input id="pOrg"></div>
         </div>
         <div class="err" id="rosterErr"></div>
+        <div style="display:flex;gap:8px;margin-top:10px;">
+          <button id="savePlayerBtn" class="btn small">Add player</button>
+          <button id="cancelEditBtn" class="btn small dark hidden">Cancel edit</button>
+        </div>
       </div>
-      <div class="card" id="rosterList"></div>
+
+      <div class="card">
+        <h3 style="margin-top:0;">Import players from CSV</h3>
+        <p style="font-size:13px;color:var(--muted);margin:4px 0 10px;">
+          Columns: first_name, last_name, jersey_number, position (F/D/G), category (M11/M13/M15/M18), level_last_year, organisation.
+        </p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          <button id="csvTemplateBtn" class="btn small dark">Download template</button>
+          <input id="csvFile" type="file" accept=".csv,text/csv" style="width:auto;flex:1;min-width:180px;">
+          <button id="csvImportBtn" class="btn small">Import</button>
+        </div>
+        <div class="err" id="csvErr"></div>
+        <div class="ok-msg" id="csvOk"></div>
+      </div>
+
+      <div class="chips" id="rosterChips"></div>
+      <div class="twrap">
+        <table>
+          <thead><tr><th class="num">#</th><th>Name</th><th class="num">Pos</th><th class="num">Cat</th>
+          <th class="opt">Level</th><th class="opt">Org</th><th></th></tr></thead>
+          <tbody id="rosterTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- evaluators -->
+    <div id="adminEvals" class="hidden">
+      <div class="card">
+        <h3 style="margin-top:0;">Add evaluator</h3>
+        <div class="grid2">
+          <div><label>Name</label><input id="eName" placeholder="Shown next to their scores"></div>
+          <div><label>Email</label><input id="eEmail" type="email"></div>
+        </div>
+        <label>Password (share it with them)</label>
+        <input id="ePass" placeholder="Min 6 characters">
+        <div class="err" id="evalErr"></div>
+        <div class="ok-msg" id="evalOk"></div>
+        <button id="addEvalBtn" class="btn small" style="margin-top:10px;">Create account</button>
+      </div>
+      <div class="twrap">
+        <table>
+          <thead><tr><th>Name</th><th class="num">Scores entered</th><th class="num">Role</th></tr></thead>
+          <tbody id="evalTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- activity -->
+    <div id="adminActivity" class="hidden">
+      <div class="statgrid" id="statCards"></div>
+      <div class="secttitle">Evaluator activity</div>
+      <div class="twrap">
+        <table>
+          <thead><tr><th>Evaluator</th><th class="num">Total</th><th class="num">M11</th><th class="num">M13</th>
+          <th class="num">M15</th><th class="num">M18</th><th class="opt">Last entry</th></tr></thead>
+          <tbody id="activityTable"></tbody>
+        </table>
+      </div>
+      <div class="secttitle">Event history <span>(latest 200)</span></div>
+      <div class="card" id="eventList" style="max-height:420px;overflow-y:auto;"></div>
+      <button id="refreshActivityBtn" class="btn small dark" style="margin-bottom:16px;">Refresh</button>
     </div>
   </section>
 
@@ -179,25 +276,32 @@
 /* ================= CONFIG ================= */
 const SUPABASE_URL = "https://zmurervbsodzjlzcpqvt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_7aFQ-qkRpqCKgZ812NjeZA_NRT9osTP";
-const SCALE_MAX = 5;
+const SCALE_MAX = 5; // 1 = best, 5 = worst
 const CATS = [
   { key:"skating",   label:"Skating" },
   { key:"compete",   label:"Compete" },
   { key:"hockey_iq", label:"Hockey IQ" },
-  { key:"overall",   label:"OVERALL", main:true }
+  { key:"overall",   label:"Overall", main:true }
 ];
+const AGE_CATS = ["M11","M13","M15","M18"];
 
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 /* ================= STATE ================= */
-let me = null;            // { id, display_name, is_admin }
-let players = [];         // roster
-let myScores = {};        // evaluator: player_id -> score row (saved on server)
-let allScores = [];       // admin: every score row
-let profileNames = {};    // user id -> display name
-let currentPlayer = null; // player being scored
-let draft = {};           // current score selections
+let me = null;
+let players = [];
+let myScores = {};
+let allScores = [];
+let profiles = [];
+let profileNames = {};
+let currentPlayer = null;
+let draft = {};
 let flushTimer = null;
+let evalCat = "All", adminCat = "All", rosterCat = "All";
+let evalSort = { key:"overall", asc:true };
+let adminSort = { key:"overall", asc:true };
+let expanded = {};
+let editingId = null;
 
 const $ = id => document.getElementById(id);
 const views = ["loginView","evalListView","scoreView","adminView"];
@@ -206,16 +310,16 @@ function show(view){
   $("backBtn").classList.toggle("hidden", view!=="scoreView");
   $("signOutBtn").classList.toggle("hidden", view==="loginView");
 }
+function esc(s){ const d = document.createElement("div"); d.textContent = s ?? ""; return d.innerHTML; }
+function fullName(p){ return p.first_name + " " + p.last_name; }
+function isGoalie(p){ return (p.position || "").trim().toLowerCase().startsWith("g"); }
+function fmt(n){ return n == null ? "–" : (Math.round(n*10)/10).toFixed(1); }
 
 /* ================= OFFLINE QUEUE ================= */
 function qKey(){ return "pendingScores_" + (me ? me.id : "anon"); }
 function loadQueue(){ try { return JSON.parse(localStorage.getItem(qKey())) || {}; } catch(e){ return {}; } }
 function saveQueue(q){ localStorage.setItem(qKey(), JSON.stringify(q)); updateQueueBanner(q); }
-function queueScore(row){
-  const q = loadQueue();
-  q[row.player_id] = row;           // latest wins per player
-  saveQueue(q);
-}
+function queueScore(row){ const q = loadQueue(); q[row.player_id] = row; saveQueue(q); }
 function updateQueueBanner(q){
   q = q || loadQueue();
   const n = Object.keys(q).length;
@@ -228,28 +332,21 @@ function updateQueueBanner(q){
 async function flushQueue(){
   if (!me || me.is_admin) return;
   const q = loadQueue();
-  const ids = Object.keys(q);
-  if (!ids.length) return;
-  for (const pid of ids){
+  for (const pid of Object.keys(q)){
     const ok = await pushScore(q[pid]);
-    if (ok){
-      const q2 = loadQueue();
-      delete q2[pid];
-      saveQueue(q2);
-    } else break; // still offline; stop trying for now
+    if (ok){ const q2 = loadQueue(); delete q2[pid]; saveQueue(q2); }
+    else break;
   }
-  renderPlayerList();
+  renderEvalTables();
 }
 async function pushScore(row){
   try {
-    const { error } = await db.from("scores")
-      .upsert(row, { onConflict: "player_id,evaluator_id" });
-    if (error) { console.warn("upsert failed", error.message); return false; }
+    const { error } = await db.from("scores").upsert(row, { onConflict: "player_id,evaluator_id" });
+    if (error) { console.warn(error.message); return false; }
     myScores[row.player_id] = row;
     return true;
   } catch(e){ return false; }
 }
-
 window.addEventListener("online",  () => { $("netBanner").classList.add("hidden"); flushQueue(); });
 window.addEventListener("offline", () => $("netBanner").classList.remove("hidden"));
 if (!navigator.onLine) $("netBanner").classList.remove("hidden");
@@ -260,44 +357,73 @@ async function init(){
   if (session) await afterLogin(session.user);
   else show("loginView");
 }
-
 $("loginBtn").onclick = async () => {
   $("loginErr").textContent = "";
   $("loginBtn").disabled = true;
   const { data, error } = await db.auth.signInWithPassword({
-    email: $("loginEmail").value.trim(),
-    password: $("loginPass").value
+    email: $("loginEmail").value.trim(), password: $("loginPass").value
   });
   $("loginBtn").disabled = false;
   if (error){ $("loginErr").textContent = "Sign-in failed: " + error.message; return; }
   await afterLogin(data.user);
 };
 $("loginPass").addEventListener("keydown", e => { if (e.key === "Enter") $("loginBtn").click(); });
-
-$("signOutBtn").onclick = async () => {
-  await db.auth.signOut();
-  me = null;
-  location.reload();
-};
+$("signOutBtn").onclick = async () => { await db.auth.signOut(); location.reload(); };
 
 async function afterLogin(user){
   const { data: prof, error } = await db.from("profiles").select("*").eq("id", user.id).single();
   if (error || !prof){
     $("loginErr").textContent = "No profile found for this account. Ask the admin.";
-    await db.auth.signOut();
-    show("loginView");
-    return;
+    await db.auth.signOut(); show("loginView"); return;
   }
   me = prof;
-  $("hSub").textContent = prof.display_name + (prof.is_admin ? " (admin)" : "");
-  if (prof.is_admin) await startAdmin();
-  else await startEvaluator();
+  $("hSub").textContent = prof.display_name + (prof.is_admin ? " · Admin" : " · Evaluator");
+  if (prof.is_admin) await startAdmin(); else await startEvaluator();
 }
 
-/* ================= SHARED DATA ================= */
+/* ================= SHARED ================= */
 async function loadPlayers(){
   const { data, error } = await db.from("players").select("*").order("jersey_number");
   if (!error) players = data || [];
+}
+function renderChips(elId, current, onPick){
+  const el = $(elId);
+  el.innerHTML = "";
+  ["All", ...AGE_CATS].forEach(c => {
+    const b = document.createElement("button");
+    b.textContent = c;
+    b.className = c === current ? "on" : "";
+    b.onclick = () => onPick(c);
+    el.appendChild(b);
+  });
+}
+function sortRows(rows, sort, getVal){
+  return rows.slice().sort((a,b) => {
+    let va = getVal(a, sort.key), vb = getVal(b, sort.key);
+    const aNull = va == null || va === "", bNull = vb == null || vb === "";
+    if (aNull && bNull) return 0;
+    if (aNull) return 1;              // empty values always last
+    if (bNull) return -1;
+    if (typeof va === "string") { va = va.toLowerCase(); vb = String(vb).toLowerCase(); }
+    if (va < vb) return sort.asc ? -1 : 1;
+    if (va > vb) return sort.asc ? 1 : -1;
+    return 0;
+  });
+}
+function th(label, key, sort, cls){
+  const on = sort.key === key;
+  return '<th class="'+(cls||"")+(on?" sorted":"")+'" data-k="'+key+'">'+label+
+         (on ? ' <span class="arr">'+(sort.asc?"&#9650;":"&#9660;")+'</span>' : '')+'</th>';
+}
+function bindSort(tableEl, sort, rerender){
+  tableEl.querySelectorAll("th[data-k]").forEach(h => {
+    h.onclick = () => {
+      const k = h.dataset.k;
+      if (sort.key === k) sort.asc = !sort.asc;
+      else { sort.key = k; sort.asc = true; }
+      rerender();
+    };
+  });
 }
 
 /* ================= EVALUATOR ================= */
@@ -307,81 +433,106 @@ async function startEvaluator(){
   myScores = {};
   (data || []).forEach(r => myScores[r.player_id] = r);
   updateQueueBanner();
-  renderPlayerList();
+  renderEvalTables();
   show("evalListView");
   flushQueue();
   if (flushTimer) clearInterval(flushTimer);
   flushTimer = setInterval(flushQueue, 12000);
 }
+$("searchBox").addEventListener("input", renderEvalTables);
 
-$("searchBox").addEventListener("input", renderPlayerList);
+function myScoreFor(p){ return loadQueue()[p.id] || myScores[p.id] || null; }
 
-function renderPlayerList(){
+function renderEvalTables(){
+  renderChips("evalChips", evalCat, c => { evalCat = c; renderEvalTables(); });
   const filter = ($("searchBox").value || "").toLowerCase();
-  const q = loadQueue();
-  const list = $("playerList");
-  list.innerHTML = "";
-  players
-    .filter(p => !filter || p.name.toLowerCase().includes(filter) || String(p.jersey_number).includes(filter))
-    .forEach(p => {
-      const saved = myScores[p.id];
-      const pending = q[p.id];
-      const row = document.createElement("div");
-      row.className = "prow";
-      let stat = "Not scored";
-      if (pending) stat = '<span class="pend">Saved on phone (' + pending.overall + '/' + SCALE_MAX + ')</span>';
-      else if (saved) stat = '<span class="done">&#10003; ' + saved.overall + "/" + SCALE_MAX + '</span>';
-      row.innerHTML = '<div class="pnum">' + p.jersey_number + '</div>' +
-                      '<div class="pname">' + esc(p.name) + '</div>' +
-                      '<div class="pstat">' + stat + '</div>';
-      row.onclick = () => openScore(p);
-      list.appendChild(row);
+  const wrap = $("evalTables");
+  wrap.innerHTML = "";
+  const pool = players.filter(p =>
+    (evalCat === "All" || p.category === evalCat) &&
+    (!filter || fullName(p).toLowerCase().includes(filter) || String(p.jersey_number).includes(filter)));
+
+  const groups = evalCat === "All" ? AGE_CATS : [evalCat];
+  groups.forEach(cat => {
+    const inCat = pool.filter(p => p.category === cat);
+    if (!inCat.length) return;
+    [["Skaters", inCat.filter(p => !isGoalie(p))], ["Goalies", inCat.filter(isGoalie)]].forEach(([title, list]) => {
+      if (!list.length) return;
+      wrap.insertAdjacentHTML("beforeend",
+        '<div class="secttitle">'+cat+' '+title+' <span>('+list.length+')</span></div>');
+      const tw = document.createElement("div");
+      tw.className = "twrap";
+      const getVal = (p, k) => {
+        if (k === "name") return fullName(p);
+        if (k === "num") return p.jersey_number;
+        if (k === "pos") return p.position;
+        if (k === "overall"){ const s = myScoreFor(p); return s ? s.overall : null; }
+        return p[k];
+      };
+      const sorted = sortRows(list, evalSort, getVal);
+      let html = '<table><thead><tr>' +
+        th("#","num",evalSort,"num") + th("Name","name",evalSort) +
+        th("Pos","pos",evalSort,"num") + th("Org","organisation",evalSort,"opt") +
+        th("My score","overall",evalSort,"num") + '</tr></thead><tbody>';
+      sorted.forEach(p => {
+        const q = loadQueue()[p.id], s = myScores[p.id];
+        let stat = '<span style="color:var(--muted)">—</span>';
+        if (q) stat = '<span class="pend">'+q.overall+' (on phone)</span>';
+        else if (s) stat = '<span class="done">&#10003; '+s.overall+'</span>';
+        html += '<tr class="rowlink" data-id="'+p.id+'">' +
+          '<td class="num"><b>'+(p.jersey_number ?? "–")+'</b></td>' +
+          '<td>'+esc(fullName(p))+'</td>' +
+          '<td class="num">'+esc(p.position||"–")+'</td>' +
+          '<td class="opt">'+esc(p.organisation||"")+'</td>' +
+          '<td class="num">'+stat+'</td></tr>';
+      });
+      html += '</tbody></table>';
+      tw.innerHTML = html;
+      tw.querySelectorAll("tr.rowlink").forEach(r => {
+        r.onclick = () => openScore(players.find(p => p.id === r.dataset.id));
+      });
+      bindSort(tw, evalSort, renderEvalTables);
+      wrap.appendChild(tw);
     });
+  });
+  if (!wrap.innerHTML) wrap.innerHTML = '<div class="card">No players yet.</div>';
 }
 
 function openScore(p){
   currentPlayer = p;
-  const existing = loadQueue()[p.id] || myScores[p.id] || {};
-  draft = {
-    skating: existing.skating || null,
-    compete: existing.compete || null,
-    hockey_iq: existing.hockey_iq || null,
-    overall: existing.overall || null
-  };
-  $("scorePlayerName").textContent = "#" + p.jersey_number + " " + p.name;
+  const existing = myScoreFor(p) || {};
+  draft = { skating: existing.skating||null, compete: existing.compete||null,
+            hockey_iq: existing.hockey_iq||null, overall: existing.overall||null };
+  $("scorePlayerName").textContent = "#" + (p.jersey_number ?? "–") + " " + fullName(p);
+  $("scorePlayerInfo").textContent = [p.category, p.position, p.organisation, p.level_last_year].filter(Boolean).join(" · ");
   $("scoreNotes").value = existing.notes || "";
   $("scoreErr").textContent = "";
-  renderCats();
+  renderCatButtons();
   show("scoreView");
   window.scrollTo(0,0);
 }
-
-function renderCats(){
+function renderCatButtons(){
   const wrap = $("scoreCats");
   wrap.innerHTML = "";
   CATS.forEach(c => {
     const div = document.createElement("div");
     if (c.main) div.className = "overall";
     let btns = "";
-    for (let i=1; i<=SCALE_MAX; i++){
+    for (let i=1; i<=SCALE_MAX; i++)
       btns += '<button data-cat="'+c.key+'" data-v="'+i+'" class="'+(draft[c.key]===i?"sel":"")+'">'+i+'</button>';
-    }
-    div.innerHTML = '<div class="catlabel"><b>'+c.label+'</b><span>1 = low &middot; '+SCALE_MAX+' = elite</span></div>' +
+    div.innerHTML = '<div class="catlabel"><b>'+c.label+'</b><span>1 = best &middot; '+SCALE_MAX+' = worst</span></div>' +
                     '<div class="scale">'+btns+'</div>';
     wrap.appendChild(div);
   });
   wrap.querySelectorAll("button").forEach(b => {
-    b.onclick = () => { draft[b.dataset.cat] = parseInt(b.dataset.v); renderCats(); };
+    b.onclick = () => { draft[b.dataset.cat] = parseInt(b.dataset.v); renderCatButtons(); };
   });
 }
-
-$("backBtn").onclick = () => { show("evalListView"); renderPlayerList(); };
-
+$("backBtn").onclick = () => { show("evalListView"); renderEvalTables(); };
 $("saveScoreBtn").onclick = async () => {
   if (!draft.overall){ $("scoreErr").textContent = "Overall score is required."; return; }
   const row = {
-    player_id: currentPlayer.id,
-    evaluator_id: me.id,
+    player_id: currentPlayer.id, evaluator_id: me.id,
     skating: draft.skating, compete: draft.compete,
     hockey_iq: draft.hockey_iq, overall: draft.overall,
     notes: $("scoreNotes").value.trim() || null,
@@ -390,128 +541,320 @@ $("saveScoreBtn").onclick = async () => {
   $("saveScoreBtn").disabled = true;
   const ok = await pushScore(row);
   $("saveScoreBtn").disabled = false;
-  if (!ok) queueScore(row);   // offline / failed -> queue locally
+  if (!ok) queueScore(row);
   show("evalListView");
-  renderPlayerList();
+  renderEvalTables();
 };
 
 /* ================= ADMIN ================= */
 async function startAdmin(){
   await loadPlayers();
-  const { data: profs } = await db.from("profiles").select("id, display_name");
-  (profs || []).forEach(p => profileNames[p.id] = p.display_name);
+  await loadProfiles();
   await refreshScores();
   renderRoster();
+  renderEvalAdmin();
   show("adminView");
   db.channel("scores-live")
-    .on("postgres_changes", { event:"*", schema:"public", table:"scores" }, () => refreshScores())
+    .on("postgres_changes", { event:"*", schema:"public", table:"scores" }, () => { refreshScores(); })
     .subscribe();
 }
-
+async function loadProfiles(){
+  const { data } = await db.from("profiles").select("*").order("display_name");
+  profiles = data || [];
+  profileNames = {};
+  profiles.forEach(p => profileNames[p.id] = p.display_name);
+}
 async function refreshScores(){
   const { data, error } = await db.from("scores").select("*");
-  if (!error){ allScores = data || []; renderScoreTable(); }
+  if (!error){ allScores = data || []; renderAdminTables(); renderActivity(); }
 }
-
 function avg(rows, key){
   const v = rows.map(r => r[key]).filter(x => x != null);
-  if (!v.length) return null;
-  return v.reduce((a,b)=>a+b,0) / v.length;
+  return v.length ? v.reduce((a,b)=>a+b,0)/v.length : null;
 }
-function fmt(n){ return n == null ? "–" : (Math.round(n*100)/100).toFixed(2); }
-
-function playerRows(){
-  return players.map(p => {
+function playerAgg(pool){
+  return pool.map(p => {
     const rows = allScores.filter(s => s.player_id === p.id);
-    return { p, rows,
-      overall: avg(rows,"overall"), skating: avg(rows,"skating"),
-      compete: avg(rows,"compete"), hockey_iq: avg(rows,"hockey_iq") };
-  }).sort((a,b) => (b.overall ?? -1) - (a.overall ?? -1));
+    return { p, rows, overall: avg(rows,"overall"), skating: avg(rows,"skating"),
+             compete: avg(rows,"compete"), hockey_iq: avg(rows,"hockey_iq") };
+  });
 }
 
-let expanded = {};
-function renderScoreTable(){
-  const tb = $("scoreTable");
-  tb.innerHTML = "";
-  const data = playerRows();
+function renderAdminTables(){
+  renderChips("adminChips", adminCat, c => { adminCat = c; renderAdminTables(); });
   $("scoreCount").textContent = allScores.length + " scores submitted";
-  data.forEach(d => {
-    const tr = document.createElement("tr");
-    tr.className = "expandable";
-    tr.innerHTML = '<td class="num"><b>'+d.p.jersey_number+'</b></td>' +
-      '<td>'+esc(d.p.name)+'</td>' +
-      '<td class="num avg">'+fmt(d.overall)+'</td>' +
-      '<td class="num">'+d.rows.length+'</td>' +
-      '<td class="num opt">'+fmt(d.skating)+'</td>' +
-      '<td class="num opt">'+fmt(d.compete)+'</td>' +
-      '<td class="num opt">'+fmt(d.hockey_iq)+'</td>';
-    tr.onclick = () => { expanded[d.p.id] = !expanded[d.p.id]; renderScoreTable(); };
-    tb.appendChild(tr);
-    if (expanded[d.p.id]){
-      const dtr = document.createElement("tr");
-      dtr.className = "detail";
-      let inner = "";
-      if (!d.rows.length) inner = '<em>No scores yet.</em>';
-      d.rows.forEach(r => {
-        inner += '<div class="evalnote"><b>' + esc(profileNames[r.evaluator_id] || "Evaluator") + '</b>' +
-          '<span class="nums"> overall '+r.overall+' &middot; skate '+(r.skating??"–")+' &middot; compete '+(r.compete??"–")+' &middot; IQ '+(r.hockey_iq??"–")+'</span>' +
-          (r.notes ? '<div>'+esc(r.notes)+'</div>' : '') + '</div>';
+  const wrap = $("adminTables");
+  wrap.innerHTML = "";
+  const pool = players.filter(p => adminCat === "All" || p.category === adminCat);
+  const groups = adminCat === "All" ? AGE_CATS : [adminCat];
+  groups.forEach(cat => {
+    const inCat = pool.filter(p => p.category === cat);
+    if (!inCat.length) return;
+    [["Skaters", inCat.filter(p => !isGoalie(p))], ["Goalies", inCat.filter(isGoalie)]].forEach(([title, list]) => {
+      if (!list.length) return;
+      wrap.insertAdjacentHTML("beforeend",
+        '<div class="secttitle">'+cat+' '+title+' <span>('+list.length+')</span></div>');
+      const tw = document.createElement("div");
+      tw.className = "twrap";
+      const getVal = (d, k) => {
+        if (k === "name") return fullName(d.p);
+        if (k === "num") return d.p.jersey_number;
+        if (k === "evals") return d.rows.length;
+        return d[k];
+      };
+      const data = sortRows(playerAgg(list), adminSort, getVal);
+      let html = '<table><thead><tr>' +
+        th("#","num",adminSort,"num") + th("Name","name",adminSort) +
+        th("Overall","overall",adminSort,"num") + th("Evals","evals",adminSort,"num") +
+        th("Skating","skating",adminSort,"num opt") + th("Compete","compete",adminSort,"num opt") +
+        th("Hockey IQ","hockey_iq",adminSort,"num opt") + '</tr></thead><tbody>';
+      data.forEach(d => {
+        html += '<tr class="rowlink" data-id="'+d.p.id+'">' +
+          '<td class="num"><b>'+(d.p.jersey_number ?? "–")+'</b></td>' +
+          '<td>'+esc(fullName(d.p))+'</td>' +
+          '<td class="num avg">'+fmt(d.overall)+'</td>' +
+          '<td class="num">'+d.rows.length+'</td>' +
+          '<td class="num opt">'+fmt(d.skating)+'</td>' +
+          '<td class="num opt">'+fmt(d.compete)+'</td>' +
+          '<td class="num opt">'+fmt(d.hockey_iq)+'</td></tr>';
+        if (expanded[d.p.id]){
+          let inner = d.rows.length ? "" : "<em>No scores yet.</em>";
+          d.rows.forEach(r => {
+            inner += '<div class="evalnote"><b>'+esc(profileNames[r.evaluator_id] || "Evaluator")+'</b>' +
+              '<span class="nums"> overall '+r.overall+' &middot; skate '+(r.skating??"–")+
+              ' &middot; compete '+(r.compete??"–")+' &middot; IQ '+(r.hockey_iq??"–")+'</span>' +
+              (r.notes ? '<div>'+esc(r.notes)+'</div>' : '')+'</div>';
+          });
+          html += '<tr class="detail"><td colspan="7">'+inner+'</td></tr>';
+        }
       });
-      dtr.innerHTML = '<td colspan="7">'+inner+'</td>';
-      tb.appendChild(dtr);
-    }
+      html += '</tbody></table>';
+      tw.innerHTML = html;
+      tw.querySelectorAll("tr.rowlink").forEach(r => {
+        r.onclick = () => { expanded[r.dataset.id] = !expanded[r.dataset.id]; renderAdminTables(); };
+      });
+      bindSort(tw, adminSort, renderAdminTables);
+      wrap.appendChild(tw);
+    });
   });
+  if (!wrap.innerHTML) wrap.innerHTML = '<div class="card">No players in this category yet — add them in the Roster tab.</div>';
 }
 
 /* tabs */
-$("tabScores").onclick = () => setTab(true);
-$("tabRoster").onclick = () => setTab(false);
-function setTab(scores){
-  $("tabScores").classList.toggle("on", scores);
-  $("tabRoster").classList.toggle("on", !scores);
-  $("adminScores").classList.toggle("hidden", !scores);
-  $("adminRoster").classList.toggle("hidden", scores);
+const TABS = { tabScores:"adminScores", tabRoster:"adminRoster", tabEvals:"adminEvals", tabActivity:"adminActivity" };
+Object.keys(TABS).forEach(t => {
+  $(t).onclick = () => {
+    Object.entries(TABS).forEach(([tab, panel]) => {
+      $(tab).classList.toggle("on", tab === t);
+      $(panel).classList.toggle("hidden", tab !== t);
+    });
+    if (t === "tabActivity") loadEvents();
+  };
+});
+
+/* ---------- roster ---------- */
+function readPlayerForm(){
+  return {
+    first_name: $("pFirst").value.trim(),
+    last_name: $("pLast").value.trim(),
+    jersey_number: parseInt($("pNum").value) || null,
+    position: $("pPos").value,
+    category: $("pCat").value,
+    level_last_year: $("pLevel").value.trim() || null,
+    organisation: $("pOrg").value.trim() || null
+  };
 }
-
-/* roster management */
-$("addPlayerBtn").onclick = async () => {
+function clearPlayerForm(){
+  ["pFirst","pLast","pNum","pLevel","pOrg"].forEach(id => $(id).value = "");
+  editingId = null;
+  $("pFormTitle").textContent = "Add player";
+  $("savePlayerBtn").textContent = "Add player";
+  $("cancelEditBtn").classList.add("hidden");
+}
+$("cancelEditBtn").onclick = clearPlayerForm;
+$("savePlayerBtn").onclick = async () => {
   $("rosterErr").textContent = "";
-  const num = parseInt($("newNum").value), name = $("newName").value.trim();
-  if (!num || !name){ $("rosterErr").textContent = "Need a number and a name."; return; }
-  const { error } = await db.from("players").insert({ jersey_number: num, name });
+  const row = readPlayerForm();
+  if (!row.first_name || !row.last_name){ $("rosterErr").textContent = "First and last name required."; return; }
+  let error;
+  if (editingId) ({ error } = await db.from("players").update(row).eq("id", editingId));
+  else ({ error } = await db.from("players").insert(row));
   if (error){ $("rosterErr").textContent = error.message; return; }
-  $("newNum").value = ""; $("newName").value = "";
-  await loadPlayers(); renderRoster(); renderScoreTable();
+  clearPlayerForm();
+  await loadPlayers(); renderRoster(); renderAdminTables();
 };
-
 function renderRoster(){
-  const el = $("rosterList");
-  el.innerHTML = "<h3 style='margin-top:0;'>Roster (" + players.length + ")</h3>";
-  players.forEach(p => {
-    const row = document.createElement("div");
-    row.className = "rosterrow";
-    row.innerHTML = '<div class="pnum">'+p.jersey_number+'</div><div class="pname" style="flex:1;">'+esc(p.name)+'</div>';
+  renderChips("rosterChips", rosterCat, c => { rosterCat = c; renderRoster(); });
+  const tb = $("rosterTable");
+  tb.innerHTML = "";
+  players.filter(p => rosterCat === "All" || p.category === rosterCat).forEach(p => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = '<td class="num"><b>'+(p.jersey_number ?? "–")+'</b></td>' +
+      '<td>'+esc(fullName(p))+'</td><td class="num">'+esc(p.position||"–")+'</td>' +
+      '<td class="num">'+p.category+'</td><td class="opt">'+esc(p.level_last_year||"")+'</td>' +
+      '<td class="opt">'+esc(p.organisation||"")+'</td>';
+    const td = document.createElement("td");
     const edit = document.createElement("button");
     edit.className = "link"; edit.textContent = "Edit";
-    edit.onclick = async () => {
-      const name = prompt("Player name:", p.name); if (name === null) return;
-      const numS = prompt("Jersey number:", p.jersey_number); if (numS === null) return;
-      await db.from("players").update({ name: name.trim(), jersey_number: parseInt(numS) }).eq("id", p.id);
-      await loadPlayers(); renderRoster(); renderScoreTable();
+    edit.onclick = () => {
+      editingId = p.id;
+      $("pFirst").value = p.first_name; $("pLast").value = p.last_name;
+      $("pNum").value = p.jersey_number ?? ""; $("pPos").value = p.position || "F";
+      $("pCat").value = p.category; $("pLevel").value = p.level_last_year || "";
+      $("pOrg").value = p.organisation || "";
+      $("pFormTitle").textContent = "Edit player";
+      $("savePlayerBtn").textContent = "Save changes";
+      $("cancelEditBtn").classList.remove("hidden");
+      window.scrollTo(0,0);
     };
     const del = document.createElement("button");
-    del.className = "link"; del.textContent = "Delete"; del.style.color = "var(--accent)";
+    del.className = "link del"; del.textContent = "Delete";
     del.onclick = async () => {
-      if (!confirm("Delete #" + p.jersey_number + " " + p.name + "? Their scores are deleted too.")) return;
+      if (!confirm("Delete " + fullName(p) + "? Their scores are deleted too.")) return;
       await db.from("players").delete().eq("id", p.id);
-      await loadPlayers(); renderRoster(); renderScoreTable();
+      await loadPlayers(); renderRoster(); renderAdminTables();
     };
-    row.appendChild(edit); row.appendChild(del);
-    el.appendChild(row);
+    td.appendChild(edit); td.appendChild(del);
+    tr.appendChild(td);
+    tb.appendChild(tr);
   });
 }
 
-/* CSV export */
+/* CSV import */
+function parseCSV(text){
+  const rows = []; let row = [], cell = "", inQ = false;
+  text = text.replace(/\r\n/g,"\n").replace(/\r/g,"\n");
+  for (let i=0; i<text.length; i++){
+    const ch = text[i];
+    if (inQ){
+      if (ch === '"'){ if (text[i+1] === '"'){ cell += '"'; i++; } else inQ = false; }
+      else cell += ch;
+    } else if (ch === '"') inQ = true;
+    else if (ch === ","){ row.push(cell); cell = ""; }
+    else if (ch === "\n"){ row.push(cell); rows.push(row); row = []; cell = ""; }
+    else cell += ch;
+  }
+  if (cell !== "" || row.length){ row.push(cell); rows.push(row); }
+  return rows.filter(r => r.some(c => c.trim() !== ""));
+}
+$("csvTemplateBtn").onclick = () => {
+  downloadCSV("players-template.csv", [
+    ["first_name","last_name","jersey_number","position","category","level_last_year","organisation"],
+    ["Alex","Tremblay","17","F","M13","A","CHA"]
+  ]);
+};
+$("csvImportBtn").onclick = async () => {
+  $("csvErr").textContent = ""; $("csvOk").textContent = "";
+  const f = $("csvFile").files[0];
+  if (!f){ $("csvErr").textContent = "Choose a CSV file first."; return; }
+  const rows = parseCSV(await f.text());
+  if (rows.length < 2){ $("csvErr").textContent = "File appears empty."; return; }
+  const header = rows[0].map(h => h.trim().toLowerCase().replace(/\s+/g,"_"));
+  const need = ["first_name","last_name","category"];
+  for (const n of need) if (!header.includes(n)){
+    $("csvErr").textContent = 'Missing required column: ' + n; return;
+  }
+  const idx = k => header.indexOf(k);
+  const recs = [], problems = [];
+  rows.slice(1).forEach((r, i) => {
+    const cat = (r[idx("category")] || "").trim().toUpperCase();
+    if (!AGE_CATS.includes(cat)){ problems.push("Row "+(i+2)+": bad category '"+cat+"'"); return; }
+    const first = (r[idx("first_name")]||"").trim(), last = (r[idx("last_name")]||"").trim();
+    if (!first || !last){ problems.push("Row "+(i+2)+": missing name"); return; }
+    recs.push({
+      first_name: first, last_name: last,
+      jersey_number: idx("jersey_number") >= 0 ? (parseInt(r[idx("jersey_number")]) || null) : null,
+      position: idx("position") >= 0 ? (r[idx("position")]||"").trim().toUpperCase() || null : null,
+      category: cat,
+      level_last_year: idx("level_last_year") >= 0 ? (r[idx("level_last_year")]||"").trim() || null : null,
+      organisation: idx("organisation") >= 0 ? (r[idx("organisation")]||"").trim() || null : null
+    });
+  });
+  if (problems.length){ $("csvErr").textContent = problems.slice(0,5).join(" · ") + (problems.length>5 ? " (+"+(problems.length-5)+" more)" : ""); if (!recs.length) return; }
+  if (!recs.length){ $("csvErr").textContent = "No valid rows found."; return; }
+  $("csvImportBtn").disabled = true;
+  let inserted = 0, failed = 0;
+  for (let i=0; i<recs.length; i+=100){
+    const { error } = await db.from("players").insert(recs.slice(i, i+100));
+    if (error) failed += recs.slice(i, i+100).length; else inserted += Math.min(100, recs.length - i);
+  }
+  $("csvImportBtn").disabled = false;
+  $("csvOk").textContent = inserted + " players imported." + (failed ? " " + failed + " failed." : "");
+  $("csvFile").value = "";
+  await loadPlayers(); renderRoster(); renderAdminTables();
+};
+
+/* ---------- evaluators ---------- */
+$("addEvalBtn").onclick = async () => {
+  $("evalErr").textContent = ""; $("evalOk").textContent = "";
+  const name = $("eName").value.trim(), email = $("eEmail").value.trim(), pass = $("ePass").value;
+  if (!name || !email || pass.length < 6){
+    $("evalErr").textContent = "Need name, email, and a password of 6+ characters."; return;
+  }
+  $("addEvalBtn").disabled = true;
+  const temp = supabase.createClient(SUPABASE_URL, SUPABASE_KEY,
+    { auth: { persistSession:false, autoRefreshToken:false } });
+  const { error } = await temp.auth.signUp({
+    email, password: pass, options: { data: { display_name: name } }
+  });
+  $("addEvalBtn").disabled = false;
+  if (error){ $("evalErr").textContent = error.message; return; }
+  $("evalOk").textContent = name + " created. Send them the site link, their email, and the password.";
+  ["eName","eEmail","ePass"].forEach(id => $(id).value = "");
+  await loadProfiles(); renderEvalAdmin(); renderActivity();
+};
+function renderEvalAdmin(){
+  const tb = $("evalTable");
+  tb.innerHTML = "";
+  profiles.forEach(p => {
+    const n = allScores.filter(s => s.evaluator_id === p.id).length;
+    const tr = document.createElement("tr");
+    tr.innerHTML = '<td>'+esc(p.display_name)+'</td><td class="num">'+n+'</td>' +
+      '<td class="num">'+(p.is_admin ? "Admin" : "Evaluator")+'</td>';
+    tb.appendChild(tr);
+  });
+}
+
+/* ---------- activity ---------- */
+function renderActivity(){
+  const playerById = {};
+  players.forEach(p => playerById[p.id] = p);
+  const total = allScores.length;
+  const evaluators = profiles.filter(p => !p.is_admin);
+  const scoredPlayers = new Set(allScores.map(s => s.player_id)).size;
+  $("statCards").innerHTML =
+    '<div class="stat"><div class="v">'+total+'</div><div class="l">Scores entered</div></div>' +
+    '<div class="stat"><div class="v">'+scoredPlayers+' / '+players.length+'</div><div class="l">Players scored</div></div>' +
+    '<div class="stat"><div class="v">'+evaluators.length+'</div><div class="l">Evaluators</div></div>';
+  const tb = $("activityTable");
+  tb.innerHTML = "";
+  evaluators.forEach(ev => {
+    const mine = allScores.filter(s => s.evaluator_id === ev.id);
+    const byCat = {};
+    AGE_CATS.forEach(c => byCat[c] = 0);
+    mine.forEach(s => { const p = playerById[s.player_id]; if (p) byCat[p.category]++; });
+    const last = mine.length ? new Date(Math.max(...mine.map(s => new Date(s.updated_at)))) : null;
+    const tr = document.createElement("tr");
+    tr.innerHTML = '<td>'+esc(ev.display_name)+'</td><td class="num"><b>'+mine.length+'</b></td>' +
+      AGE_CATS.map(c => '<td class="num">'+byCat[c]+'</td>').join("") +
+      '<td class="opt">'+(last ? last.toLocaleString([], {month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}) : "–")+'</td>';
+    tb.appendChild(tr);
+  });
+}
+async function loadEvents(){
+  renderActivity();
+  const { data, error } = await db.from("events").select("*").order("id", { ascending:false }).limit(200);
+  const el = $("eventList");
+  if (error){ el.innerHTML = '<div class="err">'+esc(error.message)+'</div>'; return; }
+  el.innerHTML = (data && data.length) ? "" : "<em>No events yet.</em>";
+  (data || []).forEach(e => {
+    el.insertAdjacentHTML("beforeend",
+      '<div class="eventrow"><div class="t">'+new Date(e.created_at).toLocaleString()+'</div>'+esc(e.details || e.action)+'</div>');
+  });
+}
+$("refreshActivityBtn").onclick = () => { refreshScores(); loadEvents(); };
+
+/* ---------- CSV export ---------- */
 function downloadCSV(name, rows){
   const csv = rows.map(r => r.map(c => {
     c = c == null ? "" : String(c);
@@ -523,21 +866,27 @@ function downloadCSV(name, rows){
   a.click();
 }
 $("exportSummaryBtn").onclick = () => {
-  const rows = [["Rank","Jersey","Player","Avg Overall","Avg Skating","Avg Compete","Avg Hockey IQ","# Evaluations"]];
-  playerRows().forEach((d,i) => rows.push([i+1, d.p.jersey_number, d.p.name,
-    fmt(d.overall), fmt(d.skating), fmt(d.compete), fmt(d.hockey_iq), d.rows.length]));
+  const rows = [["Category","Type","Rank","Jersey","First name","Last name","Position","Org","Level","Avg Overall","Avg Skating","Avg Compete","Avg Hockey IQ","# Evals"]];
+  AGE_CATS.forEach(cat => {
+    [["Skater", p => !isGoalie(p)], ["Goalie", isGoalie]].forEach(([type, test]) => {
+      const list = playerAgg(players.filter(p => p.category === cat && test(p)))
+        .sort((a,b) => (a.overall ?? 99) - (b.overall ?? 99));
+      list.forEach((d,i) => rows.push([cat, type, i+1, d.p.jersey_number, d.p.first_name, d.p.last_name,
+        d.p.position, d.p.organisation, d.p.level_last_year,
+        fmt(d.overall), fmt(d.skating), fmt(d.compete), fmt(d.hockey_iq), d.rows.length]));
+    });
+  });
   downloadCSV("tryout-summary.csv", rows);
 };
 $("exportDetailBtn").onclick = () => {
-  const rows = [["Jersey","Player","Evaluator","Overall","Skating","Compete","Hockey IQ","Notes"]];
-  playerRows().forEach(d => d.rows.forEach(r =>
-    rows.push([d.p.jersey_number, d.p.name, profileNames[r.evaluator_id] || "",
-      r.overall, r.skating, r.compete, r.hockey_iq, r.notes || ""])));
+  const rows = [["Category","Jersey","First name","Last name","Position","Evaluator","Overall","Skating","Compete","Hockey IQ","Notes"]];
+  players.forEach(p => {
+    allScores.filter(s => s.player_id === p.id).forEach(r =>
+      rows.push([p.category, p.jersey_number, p.first_name, p.last_name, p.position,
+        profileNames[r.evaluator_id] || "", r.overall, r.skating, r.compete, r.hockey_iq, r.notes || ""]));
+  });
   downloadCSV("tryout-detail.csv", rows);
 };
-
-/* util */
-function esc(s){ const d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
 
 init();
 </script>
