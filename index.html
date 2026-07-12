@@ -755,14 +755,14 @@ function renderRoster(){
   const missing = players.filter(p => playerIssues(p).length);
   $("rosterWarn").innerHTML = missing.length
     ? '<div class="warncard">&#9888; ' + missing.length + ' player' + (missing.length>1?"s":"") +
-      ' with missing info — highlighted below. Tap Edit to complete.</div>'
+      ' with missing info — marked with &#9888; below. Tap Edit to complete.</div>'
     : "";
   const tb = $("rosterTable");
   tb.innerHTML = "";
   players.filter(p => rosterCat === "All" || p.category === rosterCat).forEach(p => {
     const issues = playerIssues(p);
     const tr = document.createElement("tr");
-    if (issues.length){ tr.className = "misswarn"; tr.title = "Missing: " + issues.join(", "); }
+    if (issues.length){ tr.title = "Missing: " + issues.join(", "); }
     tr.innerHTML = '<td class="num"><b>'+(p.jersey_number ?? "–")+'</b></td>' +
       '<td>'+esc(fullName(p))+(issues.length?' <span class="pend">&#9888;</span>':'')+'</td>' +
       '<td class="num">'+(p.birth_date ?? "–")+'</td>' +
