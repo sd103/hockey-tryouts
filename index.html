@@ -210,7 +210,7 @@
         <p style="font-size:13px;color:var(--muted);margin:4px 0 10px;">
           Columns: first_name, last_name, birth_date, jersey_number, position (F/D/G), category (M11/M13/M15/M18),
           level_last_year, organisation. Only last_name is required — players with missing info are imported anyway and flagged.
-          Category is auto-assigned from birth date when blank.
+          Category is auto-assigned from birth date when blank. Dates like 2015-07-29 or 7/29/15 both work.
         </p>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
           <button id="csvTemplateBtn" class="btn small dark">Download template</button>
@@ -305,20 +305,35 @@ function catFromBirthYear(y){
 }
 function catFromBirthDate(d){ return d ? catFromBirthYear(String(d).slice(0,4)) : null; }
 function pad2(n){ return String(n).padStart(2,"0"); }
-// Accepts YYYY-MM-DD, YYYY/MM/DD, DD/MM/YYYY, MM/DD/YYYY (assumes DD/MM when ambiguous)
+// Accepts YYYY-MM-DD, YYYY/MM/DD, M/D/YYYY, M/D/YY, DD/MM/YYYY.
+// Ambiguous dates (both parts <= 12) are read month-first (7/3/15 = July 3).
+// 2-digit years: 00-30 = 2000s, 31-99 = 1900s. Bare year (2014) also accepted.
 function parseCSVDate(s){
   s = (s || "").trim();
   if (!s) return null;
   let m = s.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})$/);
   if (m) return m[1] + "-" + pad2(m[2]) + "-" + pad2(m[3]);
-  m = s.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/);
+  m = s.match(/^(\d{4})$/);                       // just a birth year
+  if (m) return m[1] + "-01-01";
+  m = s.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{2,4})$/);
   if (m){
-    let a = +m[1], b = +m[2], day = a, mon = b;
-    if (a <= 12 && b > 12){ mon = a; day = b; }   // clearly MM/DD
+    let a = +m[1], b = +m[2], y = +m[3];
+    if (y < 100) y += (y <= 30 ? 2000 : 1900);
+    let mon = a, day = b;                          // default: month first
+    if (a > 12 && b <= 12){ day = a; mon = b; }    // clearly DD/MM
     if (mon < 1 || mon > 12 || day < 1 || day > 31) return null;
-    return m[3] + "-" + pad2(mon) + "-" + pad2(day);
+    return y + "-" + pad2(mon) + "-" + pad2(day);
   }
   return null;
+}
+function normalizePosition(s){
+  s = (s || "").trim().toUpperCase();
+  if (!s) return null;
+  if (s.startsWith("F") || s.startsWith("A")) return "F";   // Forward / Attaquant
+  if (s.startsWith("D")) return "D";                        // Defence / Défenseur
+  if (s.startsWith("G")) return "G";                        // Goalie / Gardien
+  if (s.startsWith("C") || s.startsWith("W")) return "F";   // Centre / Wing
+  return s;
 }
 
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -760,7 +775,7 @@ function renderRoster(){
     edit.className = "link"; edit.textContent = "Edit";
     edit.onclick = () => {
       editingId = p.id;
-      $("pFirst").value = p.first_name; $("pLast").value = p.last_name;
+      $("pFirst").value = p.first_name || ""; $("pLast").value = p.last_name;
       $("pNum").value = p.jersey_number ?? ""; $("pBirth").value = p.birth_date ?? "";
       $("pPos").value = p.position || "F";
       $("pCat").value = p.category || (catFromBirthDate(p.birth_date) || "M11");
@@ -831,7 +846,7 @@ $("csvImportBtn").onclick = async () => {
       first_name: first || null, last_name: last,
       birth_date: bd,
       jersey_number: parseInt(val(r,"jersey_number")) || null,
-      position: val(r,"position").toUpperCase() || null,
+      position: normalizePosition(val(r,"position")),
       category: AGE_CATS.includes(cat) ? cat : null,
       level_last_year: val(r,"level_last_year") || null,
       organisation: val(r,"organisation") || null
@@ -852,7 +867,7 @@ $("csvImportBtn").onclick = async () => {
   if (flagged) msg += " " + flagged + " with missing info — highlighted in the roster below.";
   if (failed) msg += " " + failed + " failed to save.";
   $("csvOk").textContent = msg;
-  if (skipped.length) $("csvErr").textContent = "Skipped (no name): " + skipped.slice(0,3).join(" · ") + (skipped.length>3 ? " (+"+(skipped.length-3)+" more)" : "");
+  if (skipped.length) $("csvErr").textContent = "Skipped (no last name): " + skipped.slice(0,3).join(" · ") + (skipped.length>3 ? " (+"+(skipped.length-3)+" more)" : "");
   $("csvFile").value = "";
   await loadPlayers(); renderRoster(); renderAdminTables();
 };
