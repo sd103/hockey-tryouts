@@ -62,6 +62,10 @@
   .evalnote .nums{color:var(--muted);font-size:12px;margin-left:4px;}
   .done{color:var(--good);font-weight:700;}
   .pend{color:var(--warn);font-weight:700;}
+  select.cellsel{width:52px;min-width:48px;padding:8px 2px;text-align:center;border-radius:8px;font-weight:700;}
+  select.cellsel.ovr{border-color:var(--ink);}
+  td.pcell{cursor:pointer;max-width:140px;overflow:hidden;text-overflow:ellipsis;}
+  td.pcell u{color:var(--teal-dark);text-decoration:none;border-bottom:1px dotted var(--teal-dark);}
 
   .tabs{display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;}
   .tabs button{flex:1;padding:11px 10px;font-size:13px;font-weight:700;background:#e2e9ed;color:var(--muted);white-space:nowrap;}
@@ -505,6 +509,8 @@ $("searchBox").addEventListener("input", renderEvalTables);
 
 function myScoreFor(p){ return loadQueue()[p.id] || myScores[p.id] || null; }
 
+const SCORE_COLS = [["Sk","skating"],["Cp","compete"],["IQ","hockey_iq"],["Ov","overall"]];
+
 function renderEvalTables(){
   renderChips("evalChips", evalCat, c => { evalCat = c; renderEvalTables(); });
   const filter = ($("searchBox").value || "").toLowerCase();
@@ -524,34 +530,55 @@ function renderEvalTables(){
         '<div class="secttitle'+(cat===UNC?" unc":"")+'">'+groupLabel(cat)+' '+title+' <span>('+list.length+')</span></div>');
       const tw = document.createElement("div");
       tw.className = "twrap";
+      const scoreKeys = SCORE_COLS.map(c => c[1]);
       const getVal = (p, k) => {
         if (k === "name") return fullName(p);
         if (k === "num") return p.jersey_number;
         if (k === "pos") return p.position;
-        if (k === "overall"){ const s = myScoreFor(p); return s ? s.overall : null; }
+        if (scoreKeys.includes(k)){ const s = myScoreFor(p); return s ? s[k] : null; }
         return p[k];
       };
       const sorted = sortRows(list, evalSort, getVal);
       let html = '<table><thead><tr>' +
         th("#","num",evalSort,"num") + th("Name","name",evalSort) +
-        th("Pos","pos",evalSort,"num") + th("Org","organisation",evalSort,"opt") +
-        th("My score","overall",evalSort,"num") + '</tr></thead><tbody>';
+        th("Pos","pos",evalSort,"num opt") +
+        SCORE_COLS.map(c => th(c[0], c[1], evalSort, "num")).join("") +
+        '</tr></thead><tbody>';
       sorted.forEach(p => {
-        const q = loadQueue()[p.id], s = myScores[p.id];
-        let stat = '<span style="color:var(--muted)">—</span>';
-        if (q) stat = '<span class="pend">'+q.overall+' (on phone)</span>';
-        else if (s) stat = '<span class="done">&#10003; '+s.overall+'</span>';
-        html += '<tr class="rowlink" data-id="'+p.id+'">' +
-          '<td class="num"><b>'+(p.jersey_number ?? "–")+'</b></td>' +
-          '<td>'+esc(fullName(p))+'</td>' +
-          '<td class="num">'+esc(p.position||"–")+'</td>' +
-          '<td class="opt">'+esc(p.organisation||"")+'</td>' +
-          '<td class="num">'+stat+'</td></tr>';
+        const sc = myScoreFor(p) || {};
+        html += '<tr>' +
+          '<td class="num pcell" data-pid="'+p.id+'"><b>'+(p.jersey_number ?? "–")+'</b></td>' +
+          '<td class="pcell" data-pid="'+p.id+'"><u>'+esc(fullName(p))+'</u>'+(sc.notes ? ' &#128221;' : '')+'</td>' +
+          '<td class="num opt">'+esc(p.position||"–")+'</td>' +
+          SCORE_COLS.map(c => {
+            const v = sc[c[1]] ?? null;
+            let opts = '<option value="">–</option>';
+            for (let i=1; i<=SCALE_MAX; i++)
+              opts += '<option value="'+i+'"'+(v===i?' selected':'')+'>'+i+'</option>';
+            return '<td class="num"><select class="cellsel'+(c[1]==="overall"?" ovr":"")+'" data-pid="'+p.id+'" data-cat="'+c[1]+'">'+opts+'</select></td>';
+          }).join("") + '</tr>';
       });
       html += '</tbody></table>';
       tw.innerHTML = html;
-      tw.querySelectorAll("tr.rowlink").forEach(r => {
-        r.onclick = () => openScore(players.find(p => p.id === r.dataset.id));
+      tw.querySelectorAll("td.pcell").forEach(td => {
+        td.onclick = () => openScore(players.find(p => p.id === td.dataset.pid));
+      });
+      tw.querySelectorAll("select.cellsel").forEach(sel => {
+        sel.onchange = async () => {
+          const p = players.find(x => x.id === sel.dataset.pid);
+          const existing = myScoreFor(p) || {};
+          const row = {
+            player_id: p.id, evaluator_id: me.id,
+            skating: existing.skating ?? null, compete: existing.compete ?? null,
+            hockey_iq: existing.hockey_iq ?? null, overall: existing.overall ?? null,
+            notes: existing.notes ?? null,
+            updated_at: new Date().toISOString()
+          };
+          row[sel.dataset.cat] = sel.value ? parseInt(sel.value) : null;
+          const ok = await pushScore(row);
+          if (!ok) queueScore(row);
+          renderEvalTables();
+        };
       });
       bindSort(tw, evalSort, renderEvalTables);
       wrap.appendChild(tw);
