@@ -78,6 +78,10 @@
   @keyframes fq{0%{box-shadow:0 0 0 3px var(--warn);}100%{box-shadow:0 0 0 0 transparent;}}
   td.pcell{cursor:pointer;max-width:140px;overflow:hidden;text-overflow:ellipsis;}
   td.pcell u{color:var(--teal-dark);text-decoration:none;border-bottom:1px dotted var(--teal-dark);}
+  .notebadge{font-size:9px;background:#e2e9ed;color:var(--muted);border-radius:6px;padding:2px 5px;vertical-align:middle;margin-left:4px;font-weight:700;text-transform:uppercase;}
+  .histrow{padding:10px 4px;border-bottom:1px solid var(--line);font-size:13px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .histrow .t{color:var(--muted);font-size:11px;min-width:110px;}
+  .histrow .vals{color:var(--teal-dark);font-weight:700;}
 
   .tabs{display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;}
   .tabs button{flex:1;padding:11px 10px;font-size:13px;font-weight:700;background:#e2e9ed;color:var(--muted);white-space:nowrap;}
@@ -159,7 +163,7 @@
         <li><b>Score players right in the table</b> — tap the dropdowns to give 1–5 for Overall, Skating, Compete and Hockey IQ. <b>1 = best, 5 = worst.</b> Scores save the moment you pick them.</li>
         <li><b>Goalies have their own table</b> below the skaters in each age group — don't forget them! Their skills are scored as G Skill 1, 2, 3.</li>
         <li><b>Tap a player's name</b> to open the full scoring page and add written notes.</li>
-        <li><b>You can change any score at any time</b> — just tap the dropdown again.</li>
+        <li><b>You can change any score at any time</b> — just tap the dropdown again. Made a mistake? Tap <b>My history</b> to see everything you entered and restore an earlier version.</li>
         <li><b>Bad rink wifi?</b> No problem. Scores save on your phone and send automatically when connection returns. A banner shows anything still waiting.</li>
         <li><b>Only you and the admin see your scores.</b> Other evaluators can't.</li>
       </ul>
@@ -190,10 +194,20 @@
     </div>
     <div class="toolbar">
       <input id="searchBox" placeholder="Search name or number..." style="flex:1;">
+      <button id="historyBtn" class="btn small dark">My history</button>
     </div>
     <p class="desc">1 = best &middot; 5 = worst. Tap a dropdown to score — it saves instantly. Tap a name to add notes. Goalies have their own table below the skaters.</p>
     <div class="mobilehint">Tip: swipe tables sideways or rotate your phone to see every column.</div>
     <div id="evalTables"></div>
+  </section>
+
+  <!-- EVALUATOR: history -->
+  <section id="historyView" class="hidden">
+    <div class="card">
+      <h3 style="margin-top:0;">My scoring history</h3>
+      <p class="desc">Every score you've saved, newest first. Spot a mistake? Tap Restore on the entry that was correct — it puts that player's scores back to that moment.</p>
+      <div id="historyList" style="max-height:60vh;overflow-y:auto;"></div>
+    </div>
   </section>
 
   <!-- EVALUATOR: scoring -->
@@ -422,7 +436,7 @@ let currentPlayer = null;
 let draft = {};
 let flushTimer = null;
 let evalCat = "All", adminCat = "All", rosterCat = "All";
-let evalSort = { key:"overall", asc:true };
+let evalSort = { key:"num", asc:true };
 let adminSort = { key:"overall", asc:true };
 let evalFilters = { pos:"All", ov:"Any", ns:false };
 let adminFilters = { pos:"All", ov:"Any", ns:false };
@@ -431,12 +445,12 @@ let editingId = null;
 let adminScoring = false; // admin currently in scoring mode
 
 const $ = id => document.getElementById(id);
-const views = ["loginView","helpView","evalListView","scoreView","adminView"];
+const views = ["loginView","helpView","evalListView","scoreView","historyView","adminView"];
 let currentView = "loginView";
 function show(view){
   currentView = view;
   views.forEach(v => $(v).classList.toggle("hidden", v!==view));
-  $("backBtn").classList.toggle("hidden", view!=="scoreView");
+  $("backBtn").classList.toggle("hidden", view!=="scoreView" && view!=="historyView");
   $("signOutBtn").classList.toggle("hidden", view==="loginView");
   $("helpBtn").classList.toggle("hidden", !(me && !me.is_admin && view==="evalListView") && !(me && me.is_admin && adminScoring && view==="evalListView"));
   const showSwitch = me && me.is_admin && view!=="loginView" && view!=="scoreView";
@@ -458,6 +472,7 @@ function playerIssues(p){
   const miss = [];
   if (!p.last_name) miss.push("last name");
   if (p.jersey_number == null) miss.push("number");
+  if (!p.birth_date && !p.category) miss.push("birth date or category");
   return miss;
 }
 function inGroup(p, cat){ return cat === UNC ? !p.category : p.category === cat; }
@@ -496,7 +511,6 @@ async function flushQueue(){
     if (ok){ const q2 = loadQueue(); delete q2[pid]; saveQueue(q2); }
     else break;
   }
-  if (currentView === "evalListView") renderEvalTables();
 }
 async function pushScore(row){
   try {
@@ -676,7 +690,7 @@ function renderEvalTables(){
         const sc = myScoreFor(p) || {};
         html += '<tr>' +
           '<td class="num pcell" data-pid="'+p.id+'"><b>'+(p.jersey_number ?? "–")+'</b></td>' +
-          '<td class="pcell" data-pid="'+p.id+'"><u>'+esc(fullName(p))+'</u>'+(sc.notes ? ' &#128221;' : '')+'</td>' +
+          '<td class="pcell" data-pid="'+p.id+'"><u>'+esc(fullName(p))+'</u>'+(sc.notes ? ' <span class="notebadge">note</span>' : '')+'</td>' +
           '<td class="num">'+esc(p.position||"–")+'</td>' +
           cols.map(c => {
             const v = sc[c[1]] ?? null;
@@ -706,9 +720,10 @@ function renderEvalTables(){
           row[cat2] = sel.value ? parseInt(sel.value) : null;
           const ok = await pushScore(row);
           if (!ok) queueScore(row);
-          renderEvalTables();
-          const fresh = document.querySelector('select.cellsel[data-pid="'+pid+'"][data-cat="'+cat2+'"]');
-          if (fresh) fresh.classList.add(ok ? "flashok" : "flashq");
+          // no re-render here: rows keep their position so taps land on the right player
+          sel.classList.remove("flashok","flashq");
+          void sel.offsetWidth;
+          sel.classList.add(ok ? "flashok" : "flashq");
         };
       });
       bindSort(tw, evalSort, renderEvalTables);
@@ -768,6 +783,48 @@ $("saveScoreBtn").onclick = async () => {
   renderEvalTables();
   show("evalListView");
 };
+
+/* ---------- score history ---------- */
+$("historyBtn").onclick = () => { loadHistory(); show("historyView"); };
+async function loadHistory(){
+  const el = $("historyList");
+  el.innerHTML = "<em>Loading...</em>";
+  const { data, error } = await db.from("score_history").select("*")
+    .eq("evaluator_id", me.id).order("id", { ascending:false }).limit(150);
+  if (error){ el.innerHTML = '<div class="err">'+esc(error.message)+'</div>'; return; }
+  if (!data || !data.length){ el.innerHTML = "<em>No scores saved yet.</em>"; return; }
+  el.innerHTML = "";
+  data.forEach(h => {
+    const p = players.find(x => x.id === h.player_id);
+    const pname = p ? ("#" + (p.jersey_number ?? "–") + " " + fullName(p)) : "(deleted player)";
+    const lbl = p && isGoalie(p) ? ["Ov","G1","G2","G3"] : ["Ov","Sk","Cp","IQ"];
+    const row = document.createElement("div");
+    row.className = "histrow";
+    row.innerHTML = '<span class="t">'+new Date(h.created_at).toLocaleString([], {month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"})+'</span>' +
+      '<b>'+esc(pname)+'</b>' +
+      '<span class="vals">'+lbl[0]+' '+(h.overall??"–")+' &middot; '+lbl[1]+' '+(h.skating??"–")+
+      ' &middot; '+lbl[2]+' '+(h.compete??"–")+' &middot; '+lbl[3]+' '+(h.hockey_iq??"–")+'</span>' +
+      (h.notes ? '<span class="desc" style="width:100%;margin:0;">&ldquo;'+esc(h.notes)+'&rdquo;</span>' : '');
+    if (p){
+      const btn = document.createElement("button");
+      btn.className = "link"; btn.textContent = "Restore";
+      btn.onclick = async () => {
+        const row2 = {
+          player_id: h.player_id, evaluator_id: me.id,
+          skating: h.skating, compete: h.compete, hockey_iq: h.hockey_iq,
+          overall: h.overall, notes: h.notes,
+          updated_at: new Date().toISOString()
+        };
+        const ok = await pushScore(row2);
+        if (!ok) queueScore(row2);
+        toast(ok ? "Restored ✓" : "Restored — will sync");
+        loadHistory();
+      };
+      row.appendChild(btn);
+    }
+    el.appendChild(row);
+  });
+}
 
 /* ================= ADMIN ================= */
 async function startAdmin(){
@@ -940,7 +997,7 @@ function renderRoster(){
   const missing = players.filter(p => playerIssues(p).length);
   $("rosterWarn").innerHTML = missing.length
     ? '<div class="warncard">&#9888; ' + missing.length + ' player' + (missing.length>1?"s":"") +
-      ' missing a last name or number — marked with &#9888; below. Tap Edit to complete.</div>'
+      ' missing a last name, number, or birth date/category — marked with &#9888; below. Tap Edit to complete.</div>'
     : "";
   const tb = $("rosterTable");
   tb.innerHTML = "";
