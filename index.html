@@ -36,10 +36,17 @@
   .banner.off{background:var(--warn);}
   .banner.ok{background:var(--good);}
   .warncard{background:#fdf3e7;border:1px solid var(--warn);color:#9a5b00;border-radius:12px;padding:10px 14px;margin-bottom:12px;font-size:13px;font-weight:600;}
+  .desc{font-size:12px;color:var(--muted);margin:0 2px 10px;}
+  .mobilehint{display:none;font-size:12px;color:var(--teal-dark);font-weight:600;margin:0 2px 8px;}
+  @media(max-width:640px){ .mobilehint{display:block;} }
 
-  .chips{display:flex;gap:6px;margin:2px 0 12px;overflow-x:auto;padding-bottom:2px;}
+  .chips{display:flex;gap:6px;margin:2px 0 10px;overflow-x:auto;padding-bottom:2px;}
   .chips button{padding:9px 16px;font-size:14px;font-weight:700;background:#e2e9ed;color:var(--muted);border-radius:20px;white-space:nowrap;}
   .chips button.on{background:var(--teal);color:#fff;}
+  .filterbar{display:flex;gap:6px;align-items:center;margin:0 0 10px;flex-wrap:wrap;}
+  .filterbar select{width:auto;padding:9px;font-size:13px;font-weight:600;}
+  .filterbar .togglebtn{padding:9px 14px;font-size:13px;font-weight:700;background:#e2e9ed;color:var(--muted);border-radius:20px;}
+  .filterbar .togglebtn.on{background:var(--warn);color:#fff;}
 
   .twrap{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px 8px;overflow-x:auto;margin-bottom:14px;}
   table{width:100%;border-collapse:collapse;font-size:14px;}
@@ -50,11 +57,12 @@
   td.num,th.num{text-align:center;}
   tr.rowlink{cursor:pointer;}
   tr.rowlink:active,tr.rowlink:hover{background:#eef6f9;}
-  tr.misswarn{background:#fdf3e7;}
   .avg{font-weight:800;color:var(--teal-dark);font-size:15px;}
-  .secttitle{font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--ink);margin:14px 2px 6px;display:flex;align-items:baseline;gap:8px;}
+  .noevals{color:var(--warn);font-weight:800;}
+  .secttitle{font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--ink);margin:14px 2px 6px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;}
   .secttitle span{font-size:12px;color:var(--muted);font-weight:600;text-transform:none;}
   .secttitle.unc{color:var(--warn);}
+  .secttitle.goalie{color:var(--teal-dark);}
   .detail{background:#f6fafb;}
   .detail td{padding:8px 12px;white-space:normal;}
   .evalnote{margin:6px 0;padding:8px 10px;background:#fff;border:1px solid var(--line);border-radius:8px;font-size:13px;}
@@ -64,6 +72,10 @@
   .pend{color:var(--warn);font-weight:700;}
   select.cellsel{width:52px;min-width:48px;padding:8px 2px;text-align:center;border-radius:8px;font-weight:700;}
   select.cellsel.ovr{border-color:var(--ink);}
+  select.cellsel.flashok{animation:fok 1.1s ease-out;}
+  select.cellsel.flashq{animation:fq 1.1s ease-out;}
+  @keyframes fok{0%{box-shadow:0 0 0 3px var(--good);}100%{box-shadow:0 0 0 0 transparent;}}
+  @keyframes fq{0%{box-shadow:0 0 0 3px var(--warn);}100%{box-shadow:0 0 0 0 transparent;}}
   td.pcell{cursor:pointer;max-width:140px;overflow:hidden;text-overflow:ellipsis;}
   td.pcell u{color:var(--teal-dark);text-decoration:none;border-bottom:1px dotted var(--teal-dark);}
 
@@ -91,6 +103,10 @@
   .stat .l{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-top:2px;}
   .eventrow{padding:8px 4px;border-bottom:1px solid var(--line);font-size:13px;}
   .eventrow .t{color:var(--muted);font-size:11px;}
+  #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 20px;border-radius:24px;font-size:14px;font-weight:600;opacity:0;transition:opacity .3s;pointer-events:none;z-index:99;}
+  #toast.showing{opacity:.95;}
+  .helplist{font-size:14px;line-height:1.55;}
+  .helplist li{margin-bottom:8px;}
   @media(max-width:640px){ .opt{display:none;} header h1{font-size:13px;} header img{height:36px;} }
 </style>
 </head>
@@ -106,12 +122,15 @@
     </div>
   </div>
   <div class="hbtns">
+    <button id="helpBtn" class="btn ghost hidden">?</button>
+    <button id="switchBtn" class="btn ghost hidden">Score players</button>
     <button id="signOutBtn" class="btn ghost hidden">Sign out</button>
   </div>
 </header>
 
 <div id="netBanner" class="banner off hidden">Offline — scores are saved on this phone and will send when connection returns</div>
 <div id="queueBanner" class="banner ok hidden"></div>
+<div id="toast"></div>
 
 <main>
 
@@ -131,12 +150,49 @@
     </div>
   </section>
 
+  <!-- EVALUATOR HELP / HOME -->
+  <section id="helpView" class="hidden">
+    <div class="card" style="max-width:560px;margin:16px auto;">
+      <h2 style="margin-top:0;">Welcome! Here's how it works</h2>
+      <ul class="helplist">
+        <li><b>Pick an age group</b> (M11, M13...) using the buttons at the top.</li>
+        <li><b>Score players right in the table</b> — tap the dropdowns to give 1–5 for Overall, Skating, Compete and Hockey IQ. <b>1 = best, 5 = worst.</b> Scores save the moment you pick them.</li>
+        <li><b>Goalies have their own table</b> below the skaters in each age group — don't forget them! Their skills are scored as G Skill 1, 2, 3.</li>
+        <li><b>Tap a player's name</b> to open the full scoring page and add written notes.</li>
+        <li><b>You can change any score at any time</b> — just tap the dropdown again.</li>
+        <li><b>Bad rink wifi?</b> No problem. Scores save on your phone and send automatically when connection returns. A banner shows anything still waiting.</li>
+        <li><b>Only you and the admin see your scores.</b> Other evaluators can't.</li>
+      </ul>
+      <button id="startScoringBtn" class="btn" style="width:100%;margin-top:8px;">Start scoring</button>
+      <button id="changePassBtn" class="link" style="margin-top:12px;">Change my password</button>
+      <div class="ok-msg" id="passMsg"></div>
+    </div>
+  </section>
+
   <!-- EVALUATOR: player tables -->
   <section id="evalListView" class="hidden">
     <div class="chips" id="evalChips"></div>
+    <div class="filterbar">
+      <select id="evalPosF">
+        <option value="All">All positions</option>
+        <option value="F">Forwards</option>
+        <option value="D">Defence</option>
+        <option value="G">Goalies</option>
+      </select>
+      <select id="evalOvF">
+        <option value="Any">Overall: any</option>
+        <option value="1-2">Overall 1–2</option>
+        <option value="2-3">Overall 2–3</option>
+        <option value="3-4">Overall 3–4</option>
+        <option value="4-5">Overall 4–5</option>
+      </select>
+      <button id="evalNSF" class="togglebtn">Not scored yet</button>
+    </div>
     <div class="toolbar">
       <input id="searchBox" placeholder="Search name or number..." style="flex:1;">
     </div>
+    <p class="desc">1 = best &middot; 5 = worst. Tap a dropdown to score — it saves instantly. Tap a name to add notes. Goalies have their own table below the skaters.</p>
+    <div class="mobilehint">Tip: swipe tables sideways or rotate your phone to see every column.</div>
     <div id="evalTables"></div>
   </section>
 
@@ -165,13 +221,30 @@
     <!-- live scores -->
     <div id="adminScores">
       <div class="chips" id="adminChips"></div>
+      <div class="filterbar">
+        <select id="adminPosF">
+          <option value="All">All positions</option>
+          <option value="F">Forwards</option>
+          <option value="D">Defence</option>
+          <option value="G">Goalies</option>
+        </select>
+        <select id="adminOvF">
+          <option value="Any">Avg overall: any</option>
+          <option value="1-2">Avg 1–2</option>
+          <option value="2-3">Avg 2–3</option>
+          <option value="3-4">Avg 3–4</option>
+          <option value="4-5">Avg 4–5</option>
+        </select>
+        <button id="adminNSF" class="togglebtn">No scores yet</button>
+      </div>
       <div class="toolbar">
         <button id="exportSummaryBtn" class="btn small">Summary CSV</button>
         <button id="exportDetailBtn" class="btn small">Detail CSV</button>
         <span class="count" id="scoreCount"></span>
       </div>
+      <p class="desc">1 = best, 5 = worst. Ranked by average overall (lowest first). Tap a row to see each evaluator's scores and notes. Goalies have their own table below the skaters. Updates live.</p>
+      <div class="mobilehint">Tip: swipe tables sideways or rotate your phone to see every column.</div>
       <div id="adminTables"></div>
-      <p style="font-size:12px;color:var(--muted);">1 = best, 5 = worst. Ranked by average overall (lowest first). Tap a row for each evaluator's scores and notes. Updates live.</p>
     </div>
 
     <!-- roster -->
@@ -213,7 +286,7 @@
         <h3 style="margin-top:0;">Import players from CSV</h3>
         <p style="font-size:13px;color:var(--muted);margin:4px 0 10px;">
           Columns: first_name, last_name, birth_date, jersey_number, position (F/D/G), category (M11/M13/M15/M18),
-          level_last_year, organisation. Only last_name is required — players with missing info are imported anyway and flagged.
+          level_last_year, organisation. Only last_name is required.
           Category is auto-assigned from birth date when blank. Dates like 2015-07-29 or 7/29/15 both work.
         </p>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
@@ -244,7 +317,7 @@
           <div><label>Name</label><input id="eName" placeholder="Shown next to their scores"></div>
           <div><label>Email</label><input id="eEmail" type="email"></div>
         </div>
-        <label>Password (share it with them)</label>
+        <label>Starter password (they can change it later)</label>
         <input id="ePass" placeholder="Min 6 characters">
         <div class="err" id="evalErr"></div>
         <div class="ok-msg" id="evalOk"></div>
@@ -252,10 +325,12 @@
       </div>
       <div class="twrap">
         <table>
-          <thead><tr><th>Name</th><th class="num">Scores entered</th><th class="num">Role</th></tr></thead>
+          <thead><tr><th>Name</th><th class="num">Scores entered</th><th class="num">Role</th><th></th></tr></thead>
           <tbody id="evalTable"></tbody>
         </table>
       </div>
+      <p class="desc">Renaming updates the label on all their scores. Removing an evaluator deletes their scores too.
+      To change an email or fully delete a login, use the Supabase dashboard (Authentication &rarr; Users).</p>
     </div>
 
     <!-- activity -->
@@ -285,18 +360,15 @@
 const SUPABASE_URL = "https://zmurervbsodzjlzcpqvt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_7aFQ-qkRpqCKgZ812NjeZA_NRT9osTP";
 const SCALE_MAX = 5; // 1 = best, 5 = worst
-const SEASON_YEAR = 2026; // season start year — used to derive age category from birth date
-const CATS = [
-  { key:"skating",   label:"Skating" },
-  { key:"compete",   label:"Compete" },
-  { key:"hockey_iq", label:"Hockey IQ" },
-  { key:"overall",   label:"Overall", main:true }
-];
+const SEASON_YEAR = 2026;
 const AGE_CATS = ["M11","M13","M15","M18"];
-const UNC = "__unc__"; // marker for players with no category
+const UNC = "__unc__";
+// Overall always first
+const SKATER_COLS = [["Ov","overall"],["Sk","skating"],["Cp","compete"],["IQ","hockey_iq"]];
+const GOALIE_COLS = [["Ov","overall"],["G1","skating"],["G2","compete"],["G3","hockey_iq"]];
+const SKATER_LABELS = { overall:"Overall", skating:"Skating", compete:"Compete", hockey_iq:"Hockey IQ" };
+const GOALIE_LABELS = { overall:"Overall", skating:"G Skill 1", compete:"G Skill 2", hockey_iq:"G Skill 3" };
 
-// Hockey Québec: age as of Dec 31 of season start year.
-// M11 = 9-10, M13 = 11-12, M15 = 13-14, M18 = 15-17
 function catFromBirthYear(y){
   y = parseInt(y);
   if (!y || y < 1990) return null;
@@ -309,22 +381,19 @@ function catFromBirthYear(y){
 }
 function catFromBirthDate(d){ return d ? catFromBirthYear(String(d).slice(0,4)) : null; }
 function pad2(n){ return String(n).padStart(2,"0"); }
-// Accepts YYYY-MM-DD, YYYY/MM/DD, M/D/YYYY, M/D/YY, DD/MM/YYYY.
-// Ambiguous dates (both parts <= 12) are read month-first (7/3/15 = July 3).
-// 2-digit years: 00-30 = 2000s, 31-99 = 1900s. Bare year (2014) also accepted.
 function parseCSVDate(s){
   s = (s || "").trim();
   if (!s) return null;
   let m = s.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})$/);
   if (m) return m[1] + "-" + pad2(m[2]) + "-" + pad2(m[3]);
-  m = s.match(/^(\d{4})$/);                       // just a birth year
+  m = s.match(/^(\d{4})$/);
   if (m) return m[1] + "-01-01";
   m = s.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{2,4})$/);
   if (m){
     let a = +m[1], b = +m[2], y = +m[3];
     if (y < 100) y += (y <= 30 ? 2000 : 1900);
-    let mon = a, day = b;                          // default: month first
-    if (a > 12 && b <= 12){ day = a; mon = b; }    // clearly DD/MM
+    let mon = a, day = b;
+    if (a > 12 && b <= 12){ day = a; mon = b; }
     if (mon < 1 || mon > 12 || day < 1 || day > 31) return null;
     return y + "-" + pad2(mon) + "-" + pad2(day);
   }
@@ -333,10 +402,10 @@ function parseCSVDate(s){
 function normalizePosition(s){
   s = (s || "").trim().toUpperCase();
   if (!s) return null;
-  if (s.startsWith("F") || s.startsWith("A")) return "F";   // Forward / Attaquant
-  if (s.startsWith("D")) return "D";                        // Defence / Défenseur
-  if (s.startsWith("G")) return "G";                        // Goalie / Gardien
-  if (s.startsWith("C") || s.startsWith("W")) return "F";   // Centre / Wing
+  if (s.startsWith("F") || s.startsWith("A")) return "F";
+  if (s.startsWith("D")) return "D";
+  if (s.startsWith("G")) return "G";
+  if (s.startsWith("C") || s.startsWith("W")) return "F";
   return s;
 }
 
@@ -355,15 +424,31 @@ let flushTimer = null;
 let evalCat = "All", adminCat = "All", rosterCat = "All";
 let evalSort = { key:"overall", asc:true };
 let adminSort = { key:"overall", asc:true };
+let evalFilters = { pos:"All", ov:"Any", ns:false };
+let adminFilters = { pos:"All", ov:"Any", ns:false };
 let expanded = {};
 let editingId = null;
+let adminScoring = false; // admin currently in scoring mode
 
 const $ = id => document.getElementById(id);
-const views = ["loginView","evalListView","scoreView","adminView"];
+const views = ["loginView","helpView","evalListView","scoreView","adminView"];
+let currentView = "loginView";
 function show(view){
+  currentView = view;
   views.forEach(v => $(v).classList.toggle("hidden", v!==view));
   $("backBtn").classList.toggle("hidden", view!=="scoreView");
   $("signOutBtn").classList.toggle("hidden", view==="loginView");
+  $("helpBtn").classList.toggle("hidden", !(me && !me.is_admin && view==="evalListView") && !(me && me.is_admin && adminScoring && view==="evalListView"));
+  const showSwitch = me && me.is_admin && view!=="loginView" && view!=="scoreView";
+  $("switchBtn").classList.toggle("hidden", !showSwitch);
+  $("switchBtn").textContent = (view==="adminView") ? "Score players" : "Dashboard";
+}
+function toast(msg){
+  const t = $("toast");
+  t.textContent = msg;
+  t.classList.add("showing");
+  clearTimeout(t._h);
+  t._h = setTimeout(() => t.classList.remove("showing"), 1600);
 }
 function esc(s){ const d = document.createElement("div"); d.textContent = s ?? ""; return d.innerHTML; }
 function fullName(p){ return (p.first_name ? p.first_name + " " : "") + p.last_name; }
@@ -371,15 +456,23 @@ function isGoalie(p){ return (p.position || "").trim().toLowerCase().startsWith(
 function fmt(n){ return n == null ? "–" : (Math.round(n*10)/10).toFixed(1); }
 function playerIssues(p){
   const miss = [];
-  if (!p.first_name) miss.push("first name");
+  if (!p.last_name) miss.push("last name");
   if (p.jersey_number == null) miss.push("number");
-  if (!p.birth_date) miss.push("birth date");
-  if (!p.position) miss.push("position");
-  if (!p.category) miss.push("category");
   return miss;
 }
 function inGroup(p, cat){ return cat === UNC ? !p.category : p.category === cat; }
 function groupLabel(cat){ return cat === UNC ? "Uncategorized" : cat; }
+function posMatch(p, f){
+  if (f === "All") return true;
+  if (f === "G") return isGoalie(p);
+  return (p.position || "").trim().toUpperCase().startsWith(f);
+}
+function ovMatch(v, f){
+  if (f === "Any") return true;
+  if (v == null) return false;
+  const [lo, hi] = f.split("-").map(Number);
+  return v >= lo && v <= hi;
+}
 
 /* ================= OFFLINE QUEUE ================= */
 function qKey(){ return "pendingScores_" + (me ? me.id : "anon"); }
@@ -396,14 +489,14 @@ function updateQueueBanner(q){
   } else b.classList.add("hidden");
 }
 async function flushQueue(){
-  if (!me || me.is_admin) return;
+  if (!me) return;
   const q = loadQueue();
   for (const pid of Object.keys(q)){
     const ok = await pushScore(q[pid]);
     if (ok){ const q2 = loadQueue(); delete q2[pid]; saveQueue(q2); }
     else break;
   }
-  renderEvalTables();
+  if (currentView === "evalListView") renderEvalTables();
 }
 async function pushScore(row){
   try {
@@ -447,10 +540,34 @@ async function afterLogin(user){
   if (prof.is_admin) await startAdmin(); else await startEvaluator();
 }
 
+/* header buttons */
+$("switchBtn").onclick = () => {
+  if (currentView === "adminView"){ adminScoring = true; renderEvalTables(); show("evalListView"); }
+  else { adminScoring = false; show("adminView"); refreshScores(); }
+};
+$("helpBtn").onclick = () => show("helpView");
+$("startScoringBtn").onclick = () => {
+  if (me) localStorage.setItem("helpSeen_" + me.id, "1");
+  renderEvalTables();
+  show("evalListView");
+};
+$("changePassBtn").onclick = async () => {
+  const p1 = prompt("New password (at least 6 characters):");
+  if (!p1) return;
+  if (p1.length < 6){ $("passMsg").textContent = "Too short — needs 6+ characters."; return; }
+  const { error } = await db.auth.updateUser({ password: p1 });
+  $("passMsg").textContent = error ? ("Couldn't change it: " + error.message) : "Password changed. Use it next time you sign in.";
+};
+
 /* ================= SHARED ================= */
 async function loadPlayers(){
   const { data, error } = await db.from("players").select("*").order("jersey_number");
   if (!error) players = data || [];
+}
+async function loadMyScores(){
+  const { data } = await db.from("scores").select("*").eq("evaluator_id", me.id);
+  myScores = {};
+  (data || []).forEach(r => myScores[r.player_id] = r);
 }
 function renderChips(elId, current, onPick){
   const el = $(elId);
@@ -495,42 +612,53 @@ function bindSort(tableEl, sort, rerender){
 /* ================= EVALUATOR ================= */
 async function startEvaluator(){
   await loadPlayers();
-  const { data } = await db.from("scores").select("*").eq("evaluator_id", me.id);
-  myScores = {};
-  (data || []).forEach(r => myScores[r.player_id] = r);
+  await loadMyScores();
   updateQueueBanner();
   renderEvalTables();
-  show("evalListView");
+  if (!localStorage.getItem("helpSeen_" + me.id)) show("helpView");
+  else show("evalListView");
   flushQueue();
   if (flushTimer) clearInterval(flushTimer);
   flushTimer = setInterval(flushQueue, 12000);
 }
 $("searchBox").addEventListener("input", renderEvalTables);
+$("evalPosF").onchange = () => { evalFilters.pos = $("evalPosF").value; renderEvalTables(); };
+$("evalOvF").onchange  = () => { evalFilters.ov  = $("evalOvF").value;  renderEvalTables(); };
+$("evalNSF").onclick   = () => { evalFilters.ns = !evalFilters.ns; renderEvalTables(); };
 
 function myScoreFor(p){ return loadQueue()[p.id] || myScores[p.id] || null; }
 
-const SCORE_COLS = [["Sk","skating"],["Cp","compete"],["IQ","hockey_iq"],["Ov","overall"]];
-
 function renderEvalTables(){
   renderChips("evalChips", evalCat, c => { evalCat = c; renderEvalTables(); });
+  $("evalNSF").classList.toggle("on", evalFilters.ns);
   const filter = ($("searchBox").value || "").toLowerCase();
   const wrap = $("evalTables");
   wrap.innerHTML = "";
-  const pool = players.filter(p =>
-    (evalCat === "All" || p.category === evalCat) &&
-    (!filter || fullName(p).toLowerCase().includes(filter) || String(p.jersey_number).includes(filter)));
+  const pool = players.filter(p => {
+    if (evalCat !== "All" && p.category !== evalCat) return false;
+    if (filter && !fullName(p).toLowerCase().includes(filter) && !String(p.jersey_number).includes(filter)) return false;
+    if (!posMatch(p, evalFilters.pos)) return false;
+    const sc = myScoreFor(p);
+    if (!ovMatch(sc ? sc.overall : null, evalFilters.ov)) return false;
+    if (evalFilters.ns && sc && sc.overall != null) return false;
+    return true;
+  });
 
   const groups = evalCat === "All" ? [...AGE_CATS, UNC] : [evalCat];
   groups.forEach(cat => {
     const inCat = pool.filter(p => inGroup(p, cat));
     if (!inCat.length) return;
-    [["Skaters", inCat.filter(p => !isGoalie(p))], ["Goalies", inCat.filter(isGoalie)]].forEach(([title, list]) => {
+    [["Skaters", inCat.filter(p => !isGoalie(p)), SKATER_COLS],
+     ["Goalies", inCat.filter(isGoalie), GOALIE_COLS]].forEach(([title, list, cols]) => {
       if (!list.length) return;
+      const scored = list.filter(p => { const s = myScoreFor(p); return s && s.overall != null; }).length;
+      const cls = cat===UNC ? " unc" : (title==="Goalies" ? " goalie" : "");
       wrap.insertAdjacentHTML("beforeend",
-        '<div class="secttitle'+(cat===UNC?" unc":"")+'">'+groupLabel(cat)+' '+title+' <span>('+list.length+')</span></div>');
+        '<div class="secttitle'+cls+'">'+groupLabel(cat)+' '+title+
+        ' <span>('+scored+'/'+list.length+' scored)</span></div>');
       const tw = document.createElement("div");
       tw.className = "twrap";
-      const scoreKeys = SCORE_COLS.map(c => c[1]);
+      const scoreKeys = cols.map(c => c[1]);
       const getVal = (p, k) => {
         if (k === "name") return fullName(p);
         if (k === "num") return p.jersey_number;
@@ -541,16 +669,16 @@ function renderEvalTables(){
       const sorted = sortRows(list, evalSort, getVal);
       let html = '<table><thead><tr>' +
         th("#","num",evalSort,"num") + th("Name","name",evalSort) +
-        th("Pos","pos",evalSort,"num opt") +
-        SCORE_COLS.map(c => th(c[0], c[1], evalSort, "num")).join("") +
+        th("Pos","pos",evalSort,"num") +
+        cols.map(c => th(c[0], c[1], evalSort, "num")).join("") +
         '</tr></thead><tbody>';
       sorted.forEach(p => {
         const sc = myScoreFor(p) || {};
         html += '<tr>' +
           '<td class="num pcell" data-pid="'+p.id+'"><b>'+(p.jersey_number ?? "–")+'</b></td>' +
           '<td class="pcell" data-pid="'+p.id+'"><u>'+esc(fullName(p))+'</u>'+(sc.notes ? ' &#128221;' : '')+'</td>' +
-          '<td class="num opt">'+esc(p.position||"–")+'</td>' +
-          SCORE_COLS.map(c => {
+          '<td class="num">'+esc(p.position||"–")+'</td>' +
+          cols.map(c => {
             const v = sc[c[1]] ?? null;
             let opts = '<option value="">–</option>';
             for (let i=1; i<=SCALE_MAX; i++)
@@ -565,7 +693,8 @@ function renderEvalTables(){
       });
       tw.querySelectorAll("select.cellsel").forEach(sel => {
         sel.onchange = async () => {
-          const p = players.find(x => x.id === sel.dataset.pid);
+          const pid = sel.dataset.pid, cat2 = sel.dataset.cat;
+          const p = players.find(x => x.id === pid);
           const existing = myScoreFor(p) || {};
           const row = {
             player_id: p.id, evaluator_id: me.id,
@@ -574,17 +703,19 @@ function renderEvalTables(){
             notes: existing.notes ?? null,
             updated_at: new Date().toISOString()
           };
-          row[sel.dataset.cat] = sel.value ? parseInt(sel.value) : null;
+          row[cat2] = sel.value ? parseInt(sel.value) : null;
           const ok = await pushScore(row);
           if (!ok) queueScore(row);
           renderEvalTables();
+          const fresh = document.querySelector('select.cellsel[data-pid="'+pid+'"][data-cat="'+cat2+'"]');
+          if (fresh) fresh.classList.add(ok ? "flashok" : "flashq");
         };
       });
       bindSort(tw, evalSort, renderEvalTables);
       wrap.appendChild(tw);
     });
   });
-  if (!wrap.innerHTML) wrap.innerHTML = '<div class="card">No players yet.</div>';
+  if (!wrap.innerHTML) wrap.innerHTML = '<div class="card">No players match. Adjust the filters above.</div>';
 }
 
 function openScore(p){
@@ -601,15 +732,17 @@ function openScore(p){
   window.scrollTo(0,0);
 }
 function renderCatButtons(){
+  const labels = isGoalie(currentPlayer) ? GOALIE_LABELS : SKATER_LABELS;
+  const order = ["overall","skating","compete","hockey_iq"]; // overall first
   const wrap = $("scoreCats");
   wrap.innerHTML = "";
-  CATS.forEach(c => {
+  order.forEach(key => {
     const div = document.createElement("div");
-    if (c.main) div.className = "overall";
+    if (key === "overall") div.className = "overall";
     let btns = "";
     for (let i=1; i<=SCALE_MAX; i++)
-      btns += '<button data-cat="'+c.key+'" data-v="'+i+'" class="'+(draft[c.key]===i?"sel":"")+'">'+i+'</button>';
-    div.innerHTML = '<div class="catlabel"><b>'+c.label+'</b><span>1 = best &middot; '+SCALE_MAX+' = worst</span></div>' +
+      btns += '<button data-cat="'+key+'" data-v="'+i+'" class="'+(draft[key]===i?"sel":"")+'">'+i+'</button>';
+    div.innerHTML = '<div class="catlabel"><b>'+labels[key]+'</b><span>1 = best &middot; '+SCALE_MAX+' = worst</span></div>' +
                     '<div class="scale">'+btns+'</div>';
     wrap.appendChild(div);
   });
@@ -617,7 +750,7 @@ function renderCatButtons(){
     b.onclick = () => { draft[b.dataset.cat] = parseInt(b.dataset.v); renderCatButtons(); };
   });
 }
-$("backBtn").onclick = () => { show("evalListView"); renderEvalTables(); };
+$("backBtn").onclick = () => { renderEvalTables(); show("evalListView"); };
 $("saveScoreBtn").onclick = async () => {
   if (!draft.overall){ $("scoreErr").textContent = "Overall score is required."; return; }
   const row = {
@@ -631,18 +764,23 @@ $("saveScoreBtn").onclick = async () => {
   const ok = await pushScore(row);
   $("saveScoreBtn").disabled = false;
   if (!ok) queueScore(row);
-  show("evalListView");
+  toast(ok ? "Score saved ✓" : "Saved on phone — will sync");
   renderEvalTables();
+  show("evalListView");
 };
 
 /* ================= ADMIN ================= */
 async function startAdmin(){
   await loadPlayers();
   await loadProfiles();
+  await loadMyScores(); // admins can score too
   await refreshScores();
   renderRoster();
   renderEvalAdmin();
   show("adminView");
+  flushQueue();
+  if (flushTimer) clearInterval(flushTimer);
+  flushTimer = setInterval(flushQueue, 12000);
   db.channel("scores-live")
     .on("postgres_changes", { event:"*", schema:"public", table:"scores" }, () => { refreshScores(); })
     .subscribe();
@@ -655,7 +793,7 @@ async function loadProfiles(){
 }
 async function refreshScores(){
   const { data, error } = await db.from("scores").select("*");
-  if (!error){ allScores = data || []; renderAdminTables(); renderActivity(); }
+  if (!error){ allScores = data || []; renderAdminTables(); renderActivity(); renderEvalAdmin(); }
 }
 function avg(rows, key){
   const v = rows.map(r => r[key]).filter(x => x != null);
@@ -669,20 +807,39 @@ function playerAgg(pool){
   });
 }
 
+$("adminPosF").onchange = () => { adminFilters.pos = $("adminPosF").value; renderAdminTables(); };
+$("adminOvF").onchange  = () => { adminFilters.ov  = $("adminOvF").value;  renderAdminTables(); };
+$("adminNSF").onclick   = () => { adminFilters.ns = !adminFilters.ns; renderAdminTables(); };
+
 function renderAdminTables(){
   renderChips("adminChips", adminCat, c => { adminCat = c; renderAdminTables(); });
-  $("scoreCount").textContent = allScores.length + " scores submitted";
+  $("adminNSF").classList.toggle("on", adminFilters.ns);
   const wrap = $("adminTables");
   wrap.innerHTML = "";
-  const pool = players.filter(p => adminCat === "All" || p.category === adminCat);
+  const catPool = players.filter(p => adminCat === "All" || p.category === adminCat);
+  const catIds = new Set(catPool.map(p => p.id));
+  const catScoreCount = allScores.filter(s => catIds.has(s.player_id)).length;
+  $("scoreCount").textContent = catScoreCount + " scores" + (adminCat === "All" ? " total" : " in " + adminCat);
+
+  const agg = playerAgg(catPool).filter(d => {
+    if (!posMatch(d.p, adminFilters.pos)) return false;
+    if (!ovMatch(d.overall, adminFilters.ov)) return false;
+    if (adminFilters.ns && d.rows.length > 0) return false;
+    return true;
+  });
+
   const groups = adminCat === "All" ? [...AGE_CATS, UNC] : [adminCat];
   groups.forEach(cat => {
-    const inCat = pool.filter(p => inGroup(p, cat));
+    const inCat = agg.filter(d => inGroup(d.p, cat));
     if (!inCat.length) return;
-    [["Skaters", inCat.filter(p => !isGoalie(p))], ["Goalies", inCat.filter(isGoalie)]].forEach(([title, list]) => {
+    [["Skaters", inCat.filter(d => !isGoalie(d.p)), SKATER_LABELS],
+     ["Goalies", inCat.filter(d => isGoalie(d.p)), GOALIE_LABELS]].forEach(([title, list, labels]) => {
       if (!list.length) return;
+      const withScores = list.filter(d => d.rows.length > 0).length;
+      const cls = cat===UNC ? " unc" : (title==="Goalies" ? " goalie" : "");
       wrap.insertAdjacentHTML("beforeend",
-        '<div class="secttitle'+(cat===UNC?" unc":"")+'">'+groupLabel(cat)+' '+title+' <span>('+list.length+')</span></div>');
+        '<div class="secttitle'+cls+'">'+groupLabel(cat)+' '+title+
+        ' <span>('+withScores+'/'+list.length+' with scores)</span></div>');
       const tw = document.createElement("div");
       tw.className = "twrap";
       const getVal = (d, k) => {
@@ -691,27 +848,28 @@ function renderAdminTables(){
         if (k === "evals") return d.rows.length;
         return d[k];
       };
-      const data = sortRows(playerAgg(list), adminSort, getVal);
+      const data = sortRows(list, adminSort, getVal);
       let html = '<table><thead><tr>' +
         th("#","num",adminSort,"num") + th("Name","name",adminSort) +
-        th("Overall","overall",adminSort,"num") + th("Evals","evals",adminSort,"num") +
-        th("Skating","skating",adminSort,"num opt") + th("Compete","compete",adminSort,"num opt") +
-        th("Hockey IQ","hockey_iq",adminSort,"num opt") + '</tr></thead><tbody>';
+        th(labels.overall,"overall",adminSort,"num") + th("Evals","evals",adminSort,"num") +
+        th(labels.skating,"skating",adminSort,"num") + th(labels.compete,"compete",adminSort,"num") +
+        th(labels.hockey_iq,"hockey_iq",adminSort,"num") + '</tr></thead><tbody>';
       data.forEach(d => {
         html += '<tr class="rowlink" data-id="'+d.p.id+'">' +
           '<td class="num"><b>'+(d.p.jersey_number ?? "–")+'</b></td>' +
           '<td>'+esc(fullName(d.p))+'</td>' +
           '<td class="num avg">'+fmt(d.overall)+'</td>' +
-          '<td class="num">'+d.rows.length+'</td>' +
-          '<td class="num opt">'+fmt(d.skating)+'</td>' +
-          '<td class="num opt">'+fmt(d.compete)+'</td>' +
-          '<td class="num opt">'+fmt(d.hockey_iq)+'</td></tr>';
+          '<td class="num'+(d.rows.length===0?' noevals':'')+'">'+(d.rows.length===0?'&#9888; 0':d.rows.length)+'</td>' +
+          '<td class="num">'+fmt(d.skating)+'</td>' +
+          '<td class="num">'+fmt(d.compete)+'</td>' +
+          '<td class="num">'+fmt(d.hockey_iq)+'</td></tr>';
         if (expanded[d.p.id]){
           let inner = d.rows.length ? "" : "<em>No scores yet.</em>";
+          const short = isGoalie(d.p) ? ["G1","G2","G3"] : ["skate","compete","IQ"];
           d.rows.forEach(r => {
             inner += '<div class="evalnote"><b>'+esc(profileNames[r.evaluator_id] || "Evaluator")+'</b>' +
-              '<span class="nums"> overall '+r.overall+' &middot; skate '+(r.skating??"–")+
-              ' &middot; compete '+(r.compete??"–")+' &middot; IQ '+(r.hockey_iq??"–")+'</span>' +
+              '<span class="nums"> overall '+r.overall+' &middot; '+short[0]+' '+(r.skating??"–")+
+              ' &middot; '+short[1]+' '+(r.compete??"–")+' &middot; '+short[2]+' '+(r.hockey_iq??"–")+'</span>' +
               (r.notes ? '<div>'+esc(r.notes)+'</div>' : '')+'</div>';
           });
           html += '<tr class="detail"><td colspan="7">'+inner+'</td></tr>';
@@ -726,7 +884,7 @@ function renderAdminTables(){
       wrap.appendChild(tw);
     });
   });
-  if (!wrap.innerHTML) wrap.innerHTML = '<div class="card">No players in this category yet — add them in the Roster tab.</div>';
+  if (!wrap.innerHTML) wrap.innerHTML = '<div class="card">No players match. Adjust the filters above.</div>';
 }
 
 /* tabs */
@@ -782,14 +940,14 @@ function renderRoster(){
   const missing = players.filter(p => playerIssues(p).length);
   $("rosterWarn").innerHTML = missing.length
     ? '<div class="warncard">&#9888; ' + missing.length + ' player' + (missing.length>1?"s":"") +
-      ' with missing info — marked with &#9888; below. Tap Edit to complete.</div>'
+      ' missing a last name or number — marked with &#9888; below. Tap Edit to complete.</div>'
     : "";
   const tb = $("rosterTable");
   tb.innerHTML = "";
   players.filter(p => rosterCat === "All" || p.category === rosterCat).forEach(p => {
     const issues = playerIssues(p);
     const tr = document.createElement("tr");
-    if (issues.length){ tr.title = "Missing: " + issues.join(", "); }
+    if (issues.length) tr.title = "Missing: " + issues.join(", ");
     tr.innerHTML = '<td class="num"><b>'+(p.jersey_number ?? "–")+'</b></td>' +
       '<td>'+esc(fullName(p))+(issues.length?' <span class="pend">&#9888;</span>':'')+'</td>' +
       '<td class="num">'+(p.birth_date ?? "–")+'</td>' +
@@ -891,7 +1049,7 @@ $("csvImportBtn").onclick = async () => {
   }
   $("csvImportBtn").disabled = false;
   let msg = inserted + " players imported.";
-  if (flagged) msg += " " + flagged + " with missing info — highlighted in the roster below.";
+  if (flagged) msg += " " + flagged + " missing a number — marked in the roster below.";
   if (failed) msg += " " + failed + " failed to save.";
   $("csvOk").textContent = msg;
   if (skipped.length) $("csvErr").textContent = "Skipped (no last name): " + skipped.slice(0,3).join(" · ") + (skipped.length>3 ? " (+"+(skipped.length-3)+" more)" : "");
@@ -914,7 +1072,7 @@ $("addEvalBtn").onclick = async () => {
   });
   $("addEvalBtn").disabled = false;
   if (error){ $("evalErr").textContent = error.message; return; }
-  $("evalOk").textContent = name + " created. Send them the site link, their email, and the password.";
+  $("evalOk").textContent = name + " created. Send them the site link, their email, and the starter password.";
   ["eName","eEmail","ePass"].forEach(id => $(id).value = "");
   await loadProfiles(); renderEvalAdmin(); renderActivity();
 };
@@ -926,6 +1084,30 @@ function renderEvalAdmin(){
     const tr = document.createElement("tr");
     tr.innerHTML = '<td>'+esc(p.display_name)+'</td><td class="num">'+n+'</td>' +
       '<td class="num">'+(p.is_admin ? "Admin" : "Evaluator")+'</td>';
+    const td = document.createElement("td");
+    const ren = document.createElement("button");
+    ren.className = "link"; ren.textContent = "Rename";
+    ren.onclick = async () => {
+      const name = prompt("New display name:", p.display_name);
+      if (!name || !name.trim()) return;
+      const { error } = await db.from("profiles").update({ display_name: name.trim() }).eq("id", p.id);
+      if (error){ alert("Couldn't rename: " + error.message); return; }
+      await loadProfiles(); renderEvalAdmin(); renderAdminTables(); renderActivity();
+    };
+    td.appendChild(ren);
+    if (!p.is_admin){
+      const del = document.createElement("button");
+      del.className = "link del"; del.textContent = "Remove";
+      del.onclick = async () => {
+        if (!confirm("Remove evaluator \"" + p.display_name + "\"?\n\nWARNING: this permanently deletes ALL " + n +
+            " of their scores and notes, and they will no longer be able to sign in. This cannot be undone.")) return;
+        const { error } = await db.from("profiles").delete().eq("id", p.id);
+        if (error){ alert("Couldn't remove: " + error.message); return; }
+        await loadProfiles(); await refreshScores();
+      };
+      td.appendChild(del);
+    }
+    tr.appendChild(td);
     tb.appendChild(tr);
   });
 }
@@ -943,14 +1125,15 @@ function renderActivity(){
     '<div class="stat"><div class="v">'+evaluators.length+'</div><div class="l">Evaluators</div></div>';
   const tb = $("activityTable");
   tb.innerHTML = "";
-  evaluators.forEach(ev => {
+  profiles.forEach(ev => {
     const mine = allScores.filter(s => s.evaluator_id === ev.id);
+    if (ev.is_admin && !mine.length) return;
     const byCat = {};
     AGE_CATS.forEach(c => byCat[c] = 0);
     mine.forEach(s => { const p = playerById[s.player_id]; if (p && p.category) byCat[p.category]++; });
     const last = mine.length ? new Date(Math.max(...mine.map(s => new Date(s.updated_at)))) : null;
     const tr = document.createElement("tr");
-    tr.innerHTML = '<td>'+esc(ev.display_name)+'</td><td class="num"><b>'+mine.length+'</b></td>' +
+    tr.innerHTML = '<td>'+esc(ev.display_name)+(ev.is_admin?' <span class="desc">(admin)</span>':'')+'</td><td class="num"><b>'+mine.length+'</b></td>' +
       AGE_CATS.map(c => '<td class="num">'+byCat[c]+'</td>').join("") +
       '<td class="opt">'+(last ? last.toLocaleString([], {month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}) : "–")+'</td>';
     tb.appendChild(tr);
@@ -981,7 +1164,7 @@ function downloadCSV(name, rows){
   a.click();
 }
 $("exportSummaryBtn").onclick = () => {
-  const rows = [["Category","Type","Rank","Jersey","First name","Last name","Birth date","Position","Org","Level","Avg Overall","Avg Skating","Avg Compete","Avg Hockey IQ","# Evals"]];
+  const rows = [["Category","Type","Rank","Jersey","First name","Last name","Birth date","Position","Org","Level","Avg Overall","Avg Skill 1","Avg Skill 2","Avg Skill 3","# Evals"]];
   [...AGE_CATS, UNC].forEach(cat => {
     [["Skater", p => !isGoalie(p)], ["Goalie", isGoalie]].forEach(([type, test]) => {
       const list = playerAgg(players.filter(p => inGroup(p, cat) && test(p)))
@@ -994,7 +1177,7 @@ $("exportSummaryBtn").onclick = () => {
   downloadCSV("tryout-summary.csv", rows);
 };
 $("exportDetailBtn").onclick = () => {
-  const rows = [["Category","Jersey","First name","Last name","Birth date","Position","Evaluator","Overall","Skating","Compete","Hockey IQ","Notes"]];
+  const rows = [["Category","Jersey","First name","Last name","Birth date","Position","Evaluator","Overall","Skill 1 (Skating/G1)","Skill 2 (Compete/G2)","Skill 3 (IQ/G3)","Notes"]];
   players.forEach(p => {
     allScores.filter(s => s.player_id === p.id).forEach(r =>
       rows.push([p.category || "Uncategorized", p.jersey_number, p.first_name, p.last_name, p.birth_date, p.position,
