@@ -1121,7 +1121,14 @@ $("addEvalBtn").onclick = async () => {
   if (!name || !email || pass.length < 6){
     $("evalErr").textContent = "Need name, email, and a password of 6+ characters."; return;
   }
-  $("addEvalBtn").disabled = true;
+$("addEvalBtn").disabled = true;
+  const { error: invErr } = await db.from("invited_emails")
+    .upsert({ email: email.toLowerCase() });
+  if (invErr){
+    $("addEvalBtn").disabled = false;
+    $("evalErr").textContent = "Couldn't authorize this email: " + invErr.message;
+    return;
+  }
   const temp = supabase.createClient(SUPABASE_URL, SUPABASE_KEY,
     { auth: { persistSession:false, autoRefreshToken:false } });
   const { error } = await temp.auth.signUp({
