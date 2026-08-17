@@ -858,7 +858,7 @@ function avg(rows, key){
 }
 function playerAgg(pool){
   return pool.map(p => {
-    const rows = allScores.filter(s => s.player_id === p.id);
+    const rows = allScores.filter(s => s.player_id === p.id && s.overall != null);
     return { p, rows, overall: avg(rows,"overall"), skating: avg(rows,"skating"),
              compete: avg(rows,"compete"), hockey_iq: avg(rows,"hockey_iq") };
   });
@@ -875,7 +875,7 @@ function renderAdminTables(){
   wrap.innerHTML = "";
   const catPool = players.filter(p => adminCat === "All" || p.category === adminCat);
   const catIds = new Set(catPool.map(p => p.id));
-  const catScoreCount = allScores.filter(s => catIds.has(s.player_id)).length;
+  const catScoreCount = allScores.filter(s => catIds.has(s.player_id) && s.overall != null).length;
   $("scoreCount").textContent = catScoreCount + " scores" + (adminCat === "All" ? " total" : " in " + adminCat);
 
   const agg = playerAgg(catPool).filter(d => {
@@ -1190,7 +1190,7 @@ function renderActivity(){
   const tb = $("activityTable");
   tb.innerHTML = "";
   profiles.forEach(ev => {
-    const mine = allScores.filter(s => s.evaluator_id === ev.id);
+    const mine = allScores.filter(s => s.evaluator_id === ev.id && s.overall != null);
     if (ev.is_admin && !mine.length) return;
     const byCat = {};
     AGE_CATS.forEach(c => byCat[c] = 0);
@@ -1243,7 +1243,7 @@ $("exportSummaryBtn").onclick = () => {
 $("exportDetailBtn").onclick = () => {
   const rows = [["Category","Jersey","First name","Last name","Birth date","Position","Evaluator","Overall","Skill 1 (Skating/G1)","Skill 2 (Compete/G2)","Skill 3 (IQ/G3)","Notes"]];
   players.forEach(p => {
-    allScores.filter(s => s.player_id === p.id).forEach(r =>
+    allScores.filter(s => s.player_id === p.id && s.overall != null).forEach(r =>
       rows.push([p.category || "Uncategorized", p.jersey_number, p.first_name, p.last_name, p.birth_date, p.position,
         profileNames[r.evaluator_id] || "", r.overall, r.skating, r.compete, r.hockey_iq, r.notes || ""]));
   });
