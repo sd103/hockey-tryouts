@@ -152,6 +152,7 @@
       </div>
       <div class="err" id="loginErr"></div>
       <button id="loginBtn" class="btn" style="width:100%;margin-top:8px;">Sign in</button>
+      <button id="forgotBtn" class="link" style="margin-top:10px;">Forgot my password?</button>
     </div>
   </section>
 
@@ -527,6 +528,16 @@ window.addEventListener("offline", () => $("netBanner").classList.remove("hidden
 if (!navigator.onLine) $("netBanner").classList.remove("hidden");
 
 /* ================= AUTH ================= */
+db.auth.onAuthStateChange(async (event) => {
+  if (event === "PASSWORD_RECOVERY"){
+    let p1 = prompt("Choose a new password (at least 6 characters):");
+    while (p1 !== null && p1.length < 6) p1 = prompt("Too short — needs 6+ characters. Choose a new password:");
+    if (p1 === null) return;
+    const { error } = await db.auth.updateUser({ password: p1 });
+    toast(error ? "Couldn't set password: " + error.message : "Password updated — you're signed in");
+  }
+});
+
 async function init(){
   const { data: { session } } = await db.auth.getSession();
   if (session) await afterLogin(session.user);
@@ -544,6 +555,13 @@ $("loginBtn").onclick = async () => {
 };
 $("loginPass").addEventListener("keydown", e => { if (e.key === "Enter") $("loginBtn").click(); });
 $("signOutBtn").onclick = async () => { await db.auth.signOut(); location.reload(); };
+$("forgotBtn").onclick = async () => {
+  const email = ($("loginEmail").value || "").trim() || prompt("Your account email:");
+  if (!email) return;
+  const { error } = await db.auth.resetPasswordForEmail(email.trim(), { redirectTo: location.origin + location.pathname });
+  $("loginErr").textContent = "";
+  toast(error ? "Couldn't send: " + error.message : "Reset email sent — check your inbox (and spam)");
+};
 
 async function afterLogin(user){
   const { data: prof, error } = await db.from("profiles").select("*").eq("id", user.id).single();
