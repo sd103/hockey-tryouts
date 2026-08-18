@@ -127,6 +127,7 @@
   </div>
   <div class="hbtns">
     <button id="helpBtn" class="btn ghost hidden">?</button>
+    <button id="changePassHdrBtn" class="btn ghost hidden">Change my Password</button>
     <button id="switchBtn" class="btn ghost hidden">Score players</button>
     <button id="signOutBtn" class="btn ghost hidden">Sign out</button>
   </div>
@@ -195,7 +196,6 @@
     <div class="toolbar">
       <input id="searchBox" placeholder="Search name or number..." style="flex:1;">
       <button id="historyBtn" class="btn small dark">My history</button>
-      <button id="changePassBtn2" class="btn small dark">Password</button>
     </div>
     <p class="desc">1 = best &middot; 5 = worst. Tap a dropdown to score — it saves instantly. Tap a name to add notes. Goalies have their own table below the skaters.</p>
     <div class="mobilehint">Tip: swipe tables sideways or rotate your phone to see every column.</div>
@@ -453,6 +453,7 @@ function show(view){
   views.forEach(v => $(v).classList.toggle("hidden", v!==view));
   $("backBtn").classList.toggle("hidden", view!=="scoreView" && view!=="historyView");
   $("signOutBtn").classList.toggle("hidden", view==="loginView");
+  $("changePassHdrBtn").classList.toggle("hidden", view==="loginView");
   $("helpBtn").classList.toggle("hidden", !(me && !me.is_admin && view==="evalListView") && !(me && me.is_admin && adminScoring && view==="evalListView"));
   const showSwitch = me && me.is_admin && view!=="loginView" && view!=="scoreView";
   $("switchBtn").classList.toggle("hidden", !showSwitch);
@@ -574,7 +575,7 @@ async function changePassword(){
   toast(error ? ("Couldn't change it: " + error.message) : "Password changed ✓");
 }
 $("changePassBtn").onclick = changePassword;
-$("changePassBtn2").onclick = changePassword;
+$("changePassHdrBtn").onclick = changePassword;
 
 /* ================= SHARED ================= */
 async function loadPlayers(){
