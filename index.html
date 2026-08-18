@@ -168,7 +168,7 @@
         <li><b>Only you and the admin see your scores.</b> Other evaluators can't.</li>
       </ul>
       <button id="startScoringBtn" class="btn" style="width:100%;margin-top:8px;">Start scoring</button>
-      <button id="changePassBtn" class="link" style="margin-top:12px;">Change my password</button>
+      <button id="changePassBtn" class="btn small dark" style="width:100%;margin-top:10px;">Change my password</button>
       <div class="ok-msg" id="passMsg"></div>
     </div>
   </section>
@@ -195,6 +195,7 @@
     <div class="toolbar">
       <input id="searchBox" placeholder="Search name or number..." style="flex:1;">
       <button id="historyBtn" class="btn small dark">My history</button>
+      <button id="changePassBtn2" class="btn small dark">Password</button>
     </div>
     <p class="desc">1 = best &middot; 5 = worst. Tap a dropdown to score — it saves instantly. Tap a name to add notes. Goalies have their own table below the skaters.</p>
     <div class="mobilehint">Tip: swipe tables sideways or rotate your phone to see every column.</div>
@@ -565,13 +566,15 @@ $("startScoringBtn").onclick = () => {
   renderEvalTables();
   show("evalListView");
 };
-$("changePassBtn").onclick = async () => {
-  const p1 = prompt("New password (at least 6 characters):");
-  if (!p1) return;
-  if (p1.length < 6){ $("passMsg").textContent = "Too short — needs 6+ characters."; return; }
+async function changePassword(){
+  let p1 = prompt("New password (at least 6 characters):");
+  while (p1 !== null && p1.length < 6) p1 = prompt("Too short — needs 6+ characters. New password:");
+  if (p1 === null) return;
   const { error } = await db.auth.updateUser({ password: p1 });
-  $("passMsg").textContent = error ? ("Couldn't change it: " + error.message) : "Password changed. Use it next time you sign in.";
-};
+  toast(error ? ("Couldn't change it: " + error.message) : "Password changed ✓");
+}
+$("changePassBtn").onclick = changePassword;
+$("changePassBtn2").onclick = changePassword;
 
 /* ================= SHARED ================= */
 async function loadPlayers(){
