@@ -827,7 +827,7 @@ function openScore(p){
             compete: existing.compete||null, hockey_iq: existing.hockey_iq||null,
             overall: existing.overall||null };
   $("scorePlayerName").textContent = "#" + (p.jersey_number ?? "–") + " " + fullName(p);
-  $("scorePlayerInfo").textContent = [p.category, p.position, p.birth_date, p.organisation, p.level_last_year].filter(Boolean).join(" · ");
+  $("scorePlayerInfo").textContent = [p.category, p.position, p.birth_date, p.organisation, p.level_last_year ? "Level LY: " + p.level_last_year : null].filter(Boolean).join(" · ");
   $("scoreNotes").value = existing.notes || "";
   $("scoreErr").textContent = "";
   renderCatButtons();
