@@ -51,7 +51,7 @@
   .twrap{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px 8px;overflow-x:auto;margin-bottom:14px;}
   table{width:100%;border-collapse:collapse;font-size:14px;}
   th,td{padding:10px 6px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap;}
-  th{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;cursor:pointer;user-select:none;}
+  th{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;cursor:pointer;user-select:none;white-space:normal;line-height:1.15;vertical-align:bottom;}
   th.sorted{color:var(--teal);}
   th .arr{font-size:9px;}
   td.num,th.num{text-align:center;}
@@ -78,6 +78,8 @@
   @keyframes fq{0%{box-shadow:0 0 0 3px var(--warn);}100%{box-shadow:0 0 0 0 transparent;}}
   td.pcell{cursor:pointer;max-width:140px;overflow:hidden;text-overflow:ellipsis;}
   td.pcell u{color:var(--teal-dark);text-decoration:none;border-bottom:1px dotted var(--teal-dark);}
+  .notebtn{background:none;padding:4px 6px;font-size:16px;line-height:1;color:var(--muted);}
+  .notebtn.has{color:var(--teal-dark);}
   .notebadge{font-size:9px;background:#e2e9ed;color:var(--muted);border-radius:6px;padding:2px 5px;vertical-align:middle;margin-left:4px;font-weight:700;text-transform:uppercase;}
   .histrow{padding:10px 4px;border-bottom:1px solid var(--line);font-size:13px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
   .histrow .t{color:var(--muted);font-size:11px;min-width:110px;}
@@ -162,9 +164,10 @@
       <h2 style="margin-top:0;">Welcome! Here's how it works</h2>
       <ul class="helplist">
         <li><b>Pick an age group</b> (M11, M13...) using the buttons at the top.</li>
-        <li><b>Score players right in the table</b> — tap the dropdowns to give 1–5 for Overall, Skating, Compete and Hockey IQ. <b>1 = best, 5 = worst.</b> Scores save the moment you pick them.</li>
-        <li><b>Goalies have their own table</b> below the skaters in each age group — don't forget them! Their skills are scored as G Skill 1, 2, 3.</li>
-        <li><b>Tap a player's name</b> to open the full scoring page and add written notes.</li>
+        <li><b>Score players right in the table</b> — tap the dropdowns to give 1–5 for Jamboree, Overall, Skating, Compete and Hockey IQ. <b>1 = best, 5 = worst.</b> Scores save the moment you pick them.</li>
+        <li><b>Add notes with the pencil</b> — tap the ✎ next to a player's name to write or read your note without leaving the table. The pencil turns dark when a note exists.</li>
+        <li><b>Goalies have their own table</b> below the skaters in each age group — don't forget them! Their skills are scored as Skill 1, 2, 3.</li>
+        <li><b>Tap a player's name</b> to open the full scoring page.</li>
         <li><b>You can change any score at any time</b> — just tap the dropdown again. Made a mistake? Tap <b>My history</b> to see everything you entered and restore an earlier version.</li>
         <li><b>Bad rink wifi?</b> No problem. Scores save on your phone and send automatically when connection returns. A banner shows anything still waiting.</li>
         <li><b>Only you and the admin see your scores.</b> Other evaluators can't.</li>
@@ -198,7 +201,7 @@
       <input id="searchBox" placeholder="Search name or number..." style="flex:1;">
       <button id="historyBtn" class="btn small dark">My history</button>
     </div>
-    <p class="desc">1 = best &middot; 5 = worst. Tap a dropdown to score — it saves instantly. Tap a name to add notes. Goalies have their own table below the skaters.</p>
+    <p class="desc">1 = best &middot; 5 = worst. Tap a dropdown to score — it saves instantly. Tap the ✎ to add a note, or a name for the full scoring page. Goalies have their own table below the skaters.</p>
     <div class="mobilehint">Tip: swipe tables sideways or rotate your phone to see every column.</div>
     <div id="evalTables"></div>
   </section>
@@ -283,7 +286,7 @@
           </div>
           <div><label>Category</label>
             <select id="pCat">
-              <option>M11</option><option>M13</option><option>M15</option><option>M18</option>
+              <option>M11</option><option>M13</option><option>M15</option><option>M17</option><option>M19</option>
             </select>
           </div>
         </div>
@@ -301,7 +304,7 @@
       <div class="card">
         <h3 style="margin-top:0;">Import players from CSV</h3>
         <p style="font-size:13px;color:var(--muted);margin:4px 0 10px;">
-          Columns: first_name, last_name, birth_date, jersey_number, position (F/D/G), category (M11/M13/M15/M18),
+          Columns: first_name, last_name, birth_date, jersey_number, position (F/D/G), category (M11/M13/M15/M17/M19),
           level_last_year, organisation. Only last_name is required.
           Category is auto-assigned from birth date when blank. Dates like 2015-07-29 or 7/29/15 both work.
         </p>
@@ -356,7 +359,7 @@
       <div class="twrap">
         <table>
           <thead><tr><th>Evaluator</th><th class="num">Total</th><th class="num">M11</th><th class="num">M13</th>
-          <th class="num">M15</th><th class="num">M18</th><th class="opt">Last entry</th></tr></thead>
+          <th class="num">M15</th><th class="num">M17</th><th class="num">M19</th><th class="opt">Last entry</th></tr></thead>
           <tbody id="activityTable"></tbody>
         </table>
       </div>
@@ -377,13 +380,15 @@ const SUPABASE_URL = "https://zmurervbsodzjlzcpqvt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_7aFQ-qkRpqCKgZ812NjeZA_NRT9osTP";
 const SCALE_MAX = 5; // 1 = best, 5 = worst
 const SEASON_YEAR = 2026;
-const AGE_CATS = ["M11","M13","M15","M18"];
+const AGE_CATS = ["M11","M13","M15","M17","M19"];
 const UNC = "__unc__";
-// Overall always first
-const SKATER_COLS = [["Ov","overall"],["Sk","skating"],["Cp","compete"],["IQ","hockey_iq"]];
-const GOALIE_COLS = [["Ov","overall"],["G1","skating"],["G2","compete"],["G3","hockey_iq"]];
-const SKATER_LABELS = { overall:"Overall", skating:"Skating", compete:"Compete", hockey_iq:"Hockey IQ" };
-const GOALIE_LABELS = { overall:"Overall", skating:"G Skill 1", compete:"G Skill 2", hockey_iq:"G Skill 3" };
+// Jamboree first, then Overall
+const SKATER_COLS = [["Jamboree","jamboree"],["Overall","overall"],["Skating","skating"],["Compete","compete"],["Hockey IQ","hockey_iq"]];
+const GOALIE_COLS = [["Jamboree","jamboree"],["Overall","overall"],["Skill 1","skating"],["Skill 2","compete"],["Skill 3","hockey_iq"]];
+const SKATER_LABELS = { jamboree:"Jamboree", overall:"Overall", skating:"Skating", compete:"Compete", hockey_iq:"Hockey IQ" };
+const GOALIE_LABELS = { jamboree:"Jamboree", overall:"Overall", skating:"G Skill 1", compete:"G Skill 2", hockey_iq:"G Skill 3" };
+const CAT_ORDER = ["jamboree","overall","skating","compete","hockey_iq"];
+function hasEntry(s){ return s && (s.overall != null || s.jamboree != null); }
 
 function catFromBirthYear(y){
   y = parseInt(y);
@@ -392,7 +397,8 @@ function catFromBirthYear(y){
   if (age <= 10 && age >= 5) return "M11";
   if (age <= 12) return "M13";
   if (age <= 14) return "M15";
-  if (age <= 17) return "M18";
+  if (age <= 16) return "M17";
+  if (age <= 18) return "M19";
   return null;
 }
 function catFromBirthDate(d){ return d ? catFromBirthYear(String(d).slice(0,4)) : null; }
@@ -443,6 +449,7 @@ let adminSort = { key:"overall", asc:true };
 let evalFilters = { pos:"All", ov:"Any", ns:false };
 let adminFilters = { pos:"All", ov:"Any", ns:false };
 let expanded = {};
+let noteOpen = {};
 let editingId = null;
 let adminScoring = false; // admin currently in scoring mode
 
@@ -664,6 +671,17 @@ $("evalNSF").onclick   = () => { evalFilters.ns = !evalFilters.ns; renderEvalTab
 
 function myScoreFor(p){ return loadQueue()[p.id] || myScores[p.id] || null; }
 
+function baseRowFrom(p, existing){
+  return {
+    player_id: p.id, evaluator_id: me.id,
+    jamboree: existing.jamboree ?? null,
+    skating: existing.skating ?? null, compete: existing.compete ?? null,
+    hockey_iq: existing.hockey_iq ?? null, overall: existing.overall ?? null,
+    notes: existing.notes ?? null,
+    updated_at: new Date().toISOString()
+  };
+}
+
 function renderEvalTables(){
   renderChips("evalChips", evalCat, c => { evalCat = c; renderEvalTables(); });
   $("evalNSF").classList.toggle("on", evalFilters.ns);
@@ -705,14 +723,17 @@ function renderEvalTables(){
       const sorted = sortRows(list, evalSort, getVal);
       let html = '<table><thead><tr>' +
         th("#","num",evalSort,"num") + th("Name","name",evalSort) +
+        '<th class="num">Note</th>' +
         th("Pos","pos",evalSort,"num") +
         cols.map(c => th(c[0], c[1], evalSort, "num")).join("") +
         '</tr></thead><tbody>';
+      const totalCols = 4 + cols.length;
       sorted.forEach(p => {
         const sc = myScoreFor(p) || {};
         html += '<tr>' +
           '<td class="num pcell" data-pid="'+p.id+'"><b>'+(p.jersey_number ?? "–")+'</b></td>' +
-          '<td class="pcell" data-pid="'+p.id+'"><u>'+esc(fullName(p))+'</u>'+(sc.notes ? ' <span class="notebadge">note</span>' : '')+'</td>' +
+          '<td class="pcell" data-pid="'+p.id+'"><u>'+esc(fullName(p))+'</u></td>' +
+          '<td class="num"><button class="notebtn'+(sc.notes?' has':'')+'" data-pid="'+p.id+'" title="'+(sc.notes?'View/edit note':'Add note')+'">'+(sc.notes?'&#128221;':'&#9998;')+'</button></td>' +
           '<td class="num">'+esc(p.position||"–")+'</td>' +
           cols.map(c => {
             const v = sc[c[1]] ?? null;
@@ -721,24 +742,46 @@ function renderEvalTables(){
               opts += '<option value="'+i+'"'+(v===i?' selected':'')+'>'+i+'</option>';
             return '<td class="num"><select class="cellsel'+(c[1]==="overall"?" ovr":"")+'" data-pid="'+p.id+'" data-cat="'+c[1]+'">'+opts+'</select></td>';
           }).join("") + '</tr>';
+        if (noteOpen[p.id]){
+          html += '<tr class="detail"><td colspan="'+totalCols+'">' +
+            '<label style="margin-top:0;">My note on '+esc(fullName(p))+'</label>' +
+            '<textarea class="notearea" data-pid="'+p.id+'" placeholder="Quick observations...">'+esc(sc.notes||"")+'</textarea>' +
+            '<div style="display:flex;gap:8px;margin-top:8px;">' +
+            '<button class="btn small notesave" data-pid="'+p.id+'">Save note</button>' +
+            '<button class="btn small dark noteclose" data-pid="'+p.id+'">Close</button>' +
+            '</div></td></tr>';
+        }
       });
       html += '</tbody></table>';
       tw.innerHTML = html;
       tw.querySelectorAll("td.pcell").forEach(td => {
         td.onclick = () => openScore(players.find(p => p.id === td.dataset.pid));
       });
+      tw.querySelectorAll("button.notebtn").forEach(b => {
+        b.onclick = () => { noteOpen[b.dataset.pid] = !noteOpen[b.dataset.pid]; renderEvalTables(); };
+      });
+      tw.querySelectorAll("button.noteclose").forEach(b => {
+        b.onclick = () => { noteOpen[b.dataset.pid] = false; renderEvalTables(); };
+      });
+      tw.querySelectorAll("button.notesave").forEach(b => {
+        b.onclick = async () => {
+          const p = players.find(x => x.id === b.dataset.pid);
+          const ta = tw.querySelector('textarea.notearea[data-pid="'+p.id+'"]');
+          const row = baseRowFrom(p, myScoreFor(p) || {});
+          row.notes = (ta.value || "").trim() || null;
+          b.disabled = true;
+          const ok = await pushScore(row);
+          if (!ok) queueScore(row);
+          toast(ok ? "Note saved ✓" : "Saved on phone — will sync");
+          noteOpen[p.id] = false;
+          renderEvalTables();
+        };
+      });
       tw.querySelectorAll("select.cellsel").forEach(sel => {
         sel.onchange = async () => {
           const pid = sel.dataset.pid, cat2 = sel.dataset.cat;
           const p = players.find(x => x.id === pid);
-          const existing = myScoreFor(p) || {};
-          const row = {
-            player_id: p.id, evaluator_id: me.id,
-            skating: existing.skating ?? null, compete: existing.compete ?? null,
-            hockey_iq: existing.hockey_iq ?? null, overall: existing.overall ?? null,
-            notes: existing.notes ?? null,
-            updated_at: new Date().toISOString()
-          };
+          const row = baseRowFrom(p, myScoreFor(p) || {});
           row[cat2] = sel.value ? parseInt(sel.value) : null;
           const ok = await pushScore(row);
           if (!ok) queueScore(row);
@@ -758,8 +801,9 @@ function renderEvalTables(){
 function openScore(p){
   currentPlayer = p;
   const existing = myScoreFor(p) || {};
-  draft = { skating: existing.skating||null, compete: existing.compete||null,
-            hockey_iq: existing.hockey_iq||null, overall: existing.overall||null };
+  draft = { jamboree: existing.jamboree||null, skating: existing.skating||null,
+            compete: existing.compete||null, hockey_iq: existing.hockey_iq||null,
+            overall: existing.overall||null };
   $("scorePlayerName").textContent = "#" + (p.jersey_number ?? "–") + " " + fullName(p);
   $("scorePlayerInfo").textContent = [p.category, p.position, p.birth_date, p.organisation, p.level_last_year].filter(Boolean).join(" · ");
   $("scoreNotes").value = existing.notes || "";
@@ -770,10 +814,9 @@ function openScore(p){
 }
 function renderCatButtons(){
   const labels = isGoalie(currentPlayer) ? GOALIE_LABELS : SKATER_LABELS;
-  const order = ["overall","skating","compete","hockey_iq"]; // overall first
   const wrap = $("scoreCats");
   wrap.innerHTML = "";
-  order.forEach(key => {
+  CAT_ORDER.forEach(key => {
     const div = document.createElement("div");
     if (key === "overall") div.className = "overall";
     let btns = "";
@@ -792,6 +835,7 @@ $("saveScoreBtn").onclick = async () => {
   if (!draft.overall){ $("scoreErr").textContent = "Overall score is required."; return; }
   const row = {
     player_id: currentPlayer.id, evaluator_id: me.id,
+    jamboree: draft.jamboree,
     skating: draft.skating, compete: draft.compete,
     hockey_iq: draft.hockey_iq, overall: draft.overall,
     notes: $("scoreNotes").value.trim() || null,
@@ -819,13 +863,13 @@ async function loadHistory(){
   data.forEach(h => {
     const p = players.find(x => x.id === h.player_id);
     const pname = p ? ("#" + (p.jersey_number ?? "–") + " " + fullName(p)) : "(deleted player)";
-    const lbl = p && isGoalie(p) ? ["Ov","G1","G2","G3"] : ["Ov","Sk","Cp","IQ"];
+    const lbl = p && isGoalie(p) ? ["Jam","Ov","G1","G2","G3"] : ["Jam","Ov","Sk","Cp","IQ"];
     const row = document.createElement("div");
     row.className = "histrow";
     row.innerHTML = '<span class="t">'+new Date(h.created_at).toLocaleString([], {month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"})+'</span>' +
       '<b>'+esc(pname)+'</b>' +
-      '<span class="vals">'+lbl[0]+' '+(h.overall??"–")+' &middot; '+lbl[1]+' '+(h.skating??"–")+
-      ' &middot; '+lbl[2]+' '+(h.compete??"–")+' &middot; '+lbl[3]+' '+(h.hockey_iq??"–")+'</span>' +
+      '<span class="vals">'+lbl[0]+' '+(h.jamboree??"–")+' &middot; '+lbl[1]+' '+(h.overall??"–")+' &middot; '+lbl[2]+' '+(h.skating??"–")+
+      ' &middot; '+lbl[3]+' '+(h.compete??"–")+' &middot; '+lbl[4]+' '+(h.hockey_iq??"–")+'</span>' +
       (h.notes ? '<span class="desc" style="width:100%;margin:0;">&ldquo;'+esc(h.notes)+'&rdquo;</span>' : '');
     if (p){
       const btn = document.createElement("button");
@@ -833,6 +877,7 @@ async function loadHistory(){
       btn.onclick = async () => {
         const row2 = {
           player_id: h.player_id, evaluator_id: me.id,
+          jamboree: h.jamboree ?? null,
           skating: h.skating, compete: h.compete, hockey_iq: h.hockey_iq,
           overall: h.overall, notes: h.notes,
           updated_at: new Date().toISOString()
@@ -880,9 +925,9 @@ function avg(rows, key){
 }
 function playerAgg(pool){
   return pool.map(p => {
-    const rows = allScores.filter(s => s.player_id === p.id && s.overall != null);
-    return { p, rows, overall: avg(rows,"overall"), skating: avg(rows,"skating"),
-             compete: avg(rows,"compete"), hockey_iq: avg(rows,"hockey_iq") };
+    const rows = allScores.filter(s => s.player_id === p.id && hasEntry(s));
+    return { p, rows, jamboree: avg(rows,"jamboree"), overall: avg(rows,"overall"),
+             skating: avg(rows,"skating"), compete: avg(rows,"compete"), hockey_iq: avg(rows,"hockey_iq") };
   });
 }
 
@@ -897,7 +942,7 @@ function renderAdminTables(){
   wrap.innerHTML = "";
   const catPool = players.filter(p => adminCat === "All" || p.category === adminCat);
   const catIds = new Set(catPool.map(p => p.id));
-  const catScoreCount = allScores.filter(s => catIds.has(s.player_id) && s.overall != null).length;
+  const catScoreCount = allScores.filter(s => catIds.has(s.player_id) && hasEntry(s)).length;
   $("scoreCount").textContent = catScoreCount + " scores" + (adminCat === "All" ? " total" : " in " + adminCat);
 
   const agg = playerAgg(catPool).filter(d => {
@@ -930,6 +975,7 @@ function renderAdminTables(){
       const data = sortRows(list, adminSort, getVal);
       let html = '<table><thead><tr>' +
         th("#","num",adminSort,"num") + th("Name","name",adminSort) +
+        th(labels.jamboree,"jamboree",adminSort,"num") +
         th(labels.overall,"overall",adminSort,"num") + th("Evals","evals",adminSort,"num") +
         th(labels.skating,"skating",adminSort,"num") + th(labels.compete,"compete",adminSort,"num") +
         th(labels.hockey_iq,"hockey_iq",adminSort,"num") + '</tr></thead><tbody>';
@@ -937,6 +983,7 @@ function renderAdminTables(){
         html += '<tr class="rowlink" data-id="'+d.p.id+'">' +
           '<td class="num"><b>'+(d.p.jersey_number ?? "–")+'</b></td>' +
           '<td>'+esc(fullName(d.p))+'</td>' +
+          '<td class="num">'+fmt(d.jamboree)+'</td>' +
           '<td class="num avg">'+fmt(d.overall)+'</td>' +
           '<td class="num'+(d.rows.length===0?' noevals':'')+'">'+(d.rows.length===0?'&#9888; 0':d.rows.length)+'</td>' +
           '<td class="num">'+fmt(d.skating)+'</td>' +
@@ -947,11 +994,11 @@ function renderAdminTables(){
           const short = isGoalie(d.p) ? ["G1","G2","G3"] : ["skate","compete","IQ"];
           d.rows.forEach(r => {
             inner += '<div class="evalnote"><b>'+esc(profileNames[r.evaluator_id] || "Evaluator")+'</b>' +
-              '<span class="nums"> overall '+r.overall+' &middot; '+short[0]+' '+(r.skating??"–")+
+              '<span class="nums"> jamboree '+(r.jamboree??"–")+' &middot; overall '+(r.overall??"–")+' &middot; '+short[0]+' '+(r.skating??"–")+
               ' &middot; '+short[1]+' '+(r.compete??"–")+' &middot; '+short[2]+' '+(r.hockey_iq??"–")+'</span>' +
               (r.notes ? '<div>'+esc(r.notes)+'</div>' : '')+'</div>';
           });
-          html += '<tr class="detail"><td colspan="7">'+inner+'</td></tr>';
+          html += '<tr class="detail"><td colspan="8">'+inner+'</td></tr>';
         }
       });
       html += '</tbody></table>';
@@ -1212,7 +1259,7 @@ function renderActivity(){
   const tb = $("activityTable");
   tb.innerHTML = "";
   profiles.forEach(ev => {
-    const mine = allScores.filter(s => s.evaluator_id === ev.id && s.overall != null);
+    const mine = allScores.filter(s => s.evaluator_id === ev.id && hasEntry(s));
     if (ev.is_admin && !mine.length) return;
     const byCat = {};
     AGE_CATS.forEach(c => byCat[c] = 0);
@@ -1245,29 +1292,29 @@ function downloadCSV(name, rows){
     return /[",\n]/.test(c) ? '"' + c.replace(/"/g,'""') + '"' : c;
   }).join(",")).join("\n");
   const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob(["﻿" + csv], { type:"text/csv" }));
+  a.href = URL.createObjectURL(new Blob(["\ufeff" + csv], { type:"text/csv" }));
   a.download = name;
   a.click();
 }
 $("exportSummaryBtn").onclick = () => {
-  const rows = [["Category","Type","Rank","Jersey","First name","Last name","Birth date","Position","Org","Level","Avg Overall","Avg Skill 1","Avg Skill 2","Avg Skill 3","# Evals"]];
+  const rows = [["Category","Type","Rank","Jersey","First name","Last name","Birth date","Position","Org","Level","Avg Jamboree","Avg Overall","Avg Skill 1","Avg Skill 2","Avg Skill 3","# Evals"]];
   [...AGE_CATS, UNC].forEach(cat => {
     [["Skater", p => !isGoalie(p)], ["Goalie", isGoalie]].forEach(([type, test]) => {
       const list = playerAgg(players.filter(p => inGroup(p, cat) && test(p)))
         .sort((a,b) => (a.overall ?? 99) - (b.overall ?? 99));
       list.forEach((d,i) => rows.push([groupLabel(cat), type, i+1, d.p.jersey_number, d.p.first_name, d.p.last_name,
         d.p.birth_date, d.p.position, d.p.organisation, d.p.level_last_year,
-        fmt(d.overall), fmt(d.skating), fmt(d.compete), fmt(d.hockey_iq), d.rows.length]));
+        fmt(d.jamboree), fmt(d.overall), fmt(d.skating), fmt(d.compete), fmt(d.hockey_iq), d.rows.length]));
     });
   });
   downloadCSV("tryout-summary.csv", rows);
 };
 $("exportDetailBtn").onclick = () => {
-  const rows = [["Category","Jersey","First name","Last name","Birth date","Position","Evaluator","Overall","Skill 1 (Skating/G1)","Skill 2 (Compete/G2)","Skill 3 (IQ/G3)","Notes"]];
+  const rows = [["Category","Jersey","First name","Last name","Birth date","Position","Evaluator","Jamboree","Overall","Skill 1 (Skating/G1)","Skill 2 (Compete/G2)","Skill 3 (IQ/G3)","Notes"]];
   players.forEach(p => {
-    allScores.filter(s => s.player_id === p.id && s.overall != null).forEach(r =>
+    allScores.filter(s => s.player_id === p.id && hasEntry(s)).forEach(r =>
       rows.push([p.category || "Uncategorized", p.jersey_number, p.first_name, p.last_name, p.birth_date, p.position,
-        profileNames[r.evaluator_id] || "", r.overall, r.skating, r.compete, r.hockey_iq, r.notes || ""]));
+        profileNames[r.evaluator_id] || "", r.jamboree, r.overall, r.skating, r.compete, r.hockey_iq, r.notes || ""]));
   });
   downloadCSV("tryout-detail.csv", rows);
 };
