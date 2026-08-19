@@ -389,6 +389,7 @@ const SKATER_LABELS = { jamboree:"Jamboree", overall:"Overall", skating:"Skating
 const GOALIE_LABELS = { jamboree:"Jamboree", overall:"Overall", skating:"G Skill 1", compete:"G Skill 2", hockey_iq:"G Skill 3" };
 const CAT_ORDER = ["jamboree","overall","skating","compete","hockey_iq"];
 function hasEntry(s){ return s && (s.overall != null || s.jamboree != null); }
+function hasAny(s){ return s && (s.overall != null || s.jamboree != null || s.skating != null || s.compete != null || s.hockey_iq != null || s.notes); }
 
 function catFromBirthYear(y){
   y = parseInt(y);
@@ -950,8 +951,9 @@ function avg(rows, key){
 }
 function playerAgg(pool){
   return pool.map(p => {
-    const rows = allScores.filter(s => s.player_id === p.id && hasEntry(s));
-    return { p, rows, jamboree: avg(rows,"jamboree"), overall: avg(rows,"overall"),
+    const allRows = allScores.filter(s => s.player_id === p.id && hasAny(s));
+    const rows = allRows.filter(hasEntry);
+    return { p, rows, allRows, jamboree: avg(rows,"jamboree"), overall: avg(rows,"overall"),
              skating: avg(rows,"skating"), compete: avg(rows,"compete"), hockey_iq: avg(rows,"hockey_iq") };
   });
 }
@@ -996,7 +998,7 @@ function renderAdminTables(){
         if (k === "num") return d.p.jersey_number;
         if (k === "pos") return d.p.position;
         if (k === "evals") return d.rows.length;
-        if (k === "nnotes") return d.rows.filter(r => r.notes).length;
+        if (k === "nnotes") return d.allRows.filter(r => r.notes).length;
         return d[k];
       };
       const data = sortRows(list, adminSort, getVal);
@@ -1009,7 +1011,7 @@ function renderAdminTables(){
         th(labels.skating,"skating",adminSort,"num") + th(labels.compete,"compete",adminSort,"num") +
         th(labels.hockey_iq,"hockey_iq",adminSort,"num") + '</tr></thead><tbody>';
       data.forEach(d => {
-        const nn = d.rows.filter(r => r.notes).length;
+        const nn = d.allRows.filter(r => r.notes).length;
         html += '<tr class="rowlink" data-id="'+d.p.id+'">' +
           '<td class="num"><b>'+(d.p.jersey_number ?? "–")+'</b></td>' +
           '<td>'+esc(fullName(d.p))+'</td>' +
@@ -1022,10 +1024,11 @@ function renderAdminTables(){
           '<td class="num">'+fmt(d.compete)+'</td>' +
           '<td class="num">'+fmt(d.hockey_iq)+'</td></tr>';
         if (expanded[d.p.id]){
-          let inner = d.rows.length ? "" : "<em>No scores yet.</em>";
+          let inner = d.allRows.length ? "" : "<em>No scores yet.</em>";
           const short = isGoalie(d.p) ? ["G1","G2","G3"] : ["skate","compete","IQ"];
-          d.rows.forEach(r => {
+          d.allRows.forEach(r => {
             inner += '<div class="evalnote"><b>'+esc(profileNames[r.evaluator_id] || "Evaluator")+'</b>' +
+              (hasEntry(r) ? '' : ' <span class="pend" style="font-size:11px;">&#9888; not counted — no overall/jamboree yet</span>') +
               '<span class="nums"> jamboree '+(r.jamboree??"–")+' &middot; overall '+(r.overall??"–")+' &middot; '+short[0]+' '+(r.skating??"–")+
               ' &middot; '+short[1]+' '+(r.compete??"–")+' &middot; '+short[2]+' '+(r.hockey_iq??"–")+'</span>' +
               (r.notes ? '<div style="white-space:pre-line;">'+esc(r.notes)+(r.notes_updated_at ? ' <span class="nums">(last entry '+fmtWhen(r.notes_updated_at)+')</span>' : '')+'</div>' : '')+'</div>';
@@ -1245,7 +1248,8 @@ function renderEvalAdmin(){
   const tb = $("evalTable");
   tb.innerHTML = "";
   profiles.forEach(p => {
-    const n = allScores.filter(s => s.evaluator_id === p.id).length;
+    const n = allScores.filter(s => s.evaluator_id === p.id && hasEntry(s)).length;
+    const nAll = allScores.filter(s => s.evaluator_id === p.id).length;
     const tr = document.createElement("tr");
     tr.innerHTML = '<td>'+esc(p.display_name)+'</td><td class="num">'+n+'</td>' +
       '<td class="num">'+(p.is_admin ? "Admin" : "Evaluator")+'</td>';
@@ -1264,7 +1268,7 @@ function renderEvalAdmin(){
       const del = document.createElement("button");
       del.className = "link del"; del.textContent = "Remove";
       del.onclick = async () => {
-        if (!confirm("Remove evaluator \"" + p.display_name + "\"?\n\nWARNING: this permanently deletes ALL " + n +
+        if (!confirm("Remove evaluator \"" + p.display_name + "\"?\n\nWARNING: this permanently deletes ALL " + nAll +
             " of their scores and notes, and they will no longer be able to sign in. This cannot be undone.")) return;
         const { error } = await db.from("profiles").delete().eq("id", p.id);
         if (error){ alert("Couldn't remove: " + error.message); return; }
@@ -1344,7 +1348,7 @@ $("exportSummaryBtn").onclick = () => {
 $("exportDetailBtn").onclick = () => {
   const rows = [["Category","Jersey","First name","Last name","Birth date","Position","Evaluator","Jamboree","Overall","Skill 1 (Skating/G1)","Skill 2 (Compete/G2)","Skill 3 (IQ/G3)","Notes","Note last edited"]];
   players.forEach(p => {
-    allScores.filter(s => s.player_id === p.id && hasEntry(s)).forEach(r =>
+    allScores.filter(s => s.player_id === p.id && hasAny(s)).forEach(r =>
       rows.push([p.category || "Uncategorized", p.jersey_number, p.first_name, p.last_name, p.birth_date, p.position,
         profileNames[r.evaluator_id] || "", r.jamboree, r.overall, r.skating, r.compete, r.hockey_iq, r.notes || "",
         r.notes_updated_at ? new Date(r.notes_updated_at).toLocaleString() : ""]));
