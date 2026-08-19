@@ -165,7 +165,7 @@
       <ul class="helplist">
         <li><b>Pick an age group</b> (M11, M13...) using the buttons at the top.</li>
         <li><b>Score players right in the table</b> — tap the dropdowns to give 1–5 for Jamboree, Overall, Skating, Compete and Hockey IQ. <b>1 = best, 5 = worst.</b> Scores save the moment you pick them.</li>
-        <li><b>Add notes with the pencil</b> — tap the ✎ next to a player's name, type a quick observation and hit Add entry. Each entry is saved with a timestamp, so you can add more as the tryout goes on. The pencil turns dark when notes exist.</li>
+        <li><b>Add notes with the pencil</b> — tap the ✎ next to a player's name, type your observation and tap Add note. A timestamp is added automatically, and you can keep adding entries as the tryout goes on. The pencil turns dark when notes exist. To fix a mistake in a note, tap the player's name and edit the notes on their scoring page.</li>
         <li><b>Goalies have their own table</b> below the skaters in each age group — don't forget them! Their skills are scored as Skill 1, 2, 3.</li>
         <li><b>Tap a player's name</b> to open the full scoring page.</li>
         <li><b>You can change any score at any time</b> — just tap the dropdown again. Made a mistake? Tap <b>My history</b> to see everything you entered and restore an earlier version.</li>
@@ -746,16 +746,16 @@ function renderEvalTables(){
           }).join("") + '</tr>';
         if (noteOpen[p.id]){
           html += '<tr class="detail"><td colspan="'+totalCols+'">' +
-            '<label style="margin-top:0;">Add a note on '+esc(fullName(p))+'</label>' +
+            (sc.notes
+              ? '<div style="white-space:pre-line;font-size:13px;background:#fff;border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-bottom:8px;">'+esc(sc.notes)+'</div>'
+              : '<div class="desc" style="margin-bottom:8px;">No notes yet on '+esc(fullName(p))+'.</div>') +
             '<div style="display:flex;gap:8px;">' +
-            '<input class="noteentry" data-pid="'+p.id+'" placeholder="Quick observation... saves with a timestamp">' +
-            '<button class="btn small noteadd" data-pid="'+p.id+'" style="white-space:nowrap;">Add entry</button>' +
+            '<input class="noteentry" data-pid="'+p.id+'" placeholder="Add a note — timestamp is added automatically">' +
+            '<button class="btn small noteadd" data-pid="'+p.id+'" style="white-space:nowrap;">Add note</button>' +
             '</div>' +
-            '<label>Full note '+(sc.notes_updated_at ? '<span style="font-weight:600;text-transform:none;">(last edited '+fmtWhen(sc.notes_updated_at)+')</span>' : '')+'</label>' +
-            '<textarea class="notearea" data-pid="'+p.id+'" placeholder="Entries appear here — edit freely to fix mistakes">'+esc(sc.notes||"")+'</textarea>' +
-            '<div style="display:flex;gap:8px;margin-top:8px;">' +
-            '<button class="btn small notesave" data-pid="'+p.id+'">Save edits</button>' +
+            '<div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap;">' +
             '<button class="btn small dark noteclose" data-pid="'+p.id+'">Close</button>' +
+            '<span class="desc" style="margin:0;">Need to fix a mistake? Tap the player\'s name and edit the notes there.</span>' +
             '</div></td></tr>';
         }
       });
@@ -786,6 +786,8 @@ function renderEvalTables(){
           if (!ok) queueScore(row);
           toast(ok ? "Note added ✓" : "Saved on phone — will sync");
           renderEvalTables();
+          const again = wrap.querySelector('input.noteentry[data-pid="'+p.id+'"]');
+          if (again) again.focus();
         };
       });
       tw.querySelectorAll("input.noteentry").forEach(inp => {
@@ -795,22 +797,6 @@ function renderEvalTables(){
             if (b) b.click();
           }
         });
-      });
-      tw.querySelectorAll("button.notesave").forEach(b => {
-        b.onclick = async () => {
-          const p = players.find(x => x.id === b.dataset.pid);
-          const ta = tw.querySelector('textarea.notearea[data-pid="'+p.id+'"]');
-          const existing = myScoreFor(p) || {};
-          const row = baseRowFrom(p, existing);
-          row.notes = (ta.value || "").trim() || null;
-          if (row.notes !== (existing.notes ?? null)) row.notes_updated_at = new Date().toISOString();
-          b.disabled = true;
-          const ok = await pushScore(row);
-          if (!ok) queueScore(row);
-          toast(ok ? "Note saved ✓" : "Saved on phone — will sync");
-          noteOpen[p.id] = false;
-          renderEvalTables();
-        };
       });
       tw.querySelectorAll("select.cellsel").forEach(sel => {
         sel.onchange = async () => {
