@@ -165,7 +165,7 @@
       <ul class="helplist">
         <li><b>Pick an age group</b> (M11, M13...) using the buttons at the top.</li>
         <li><b>Score players right in the table</b> — tap the dropdowns to give 1–5 for Jamboree, Overall, Skating, Compete and Hockey IQ. <b>1 = best, 5 = worst.</b> Scores save the moment you pick them.</li>
-        <li><b>Add notes with the pencil</b> — tap the ✎ next to a player's name to write or read your note without leaving the table. The pencil turns dark when a note exists.</li>
+        <li><b>Add notes with the pencil</b> — tap the ✎ next to a player's name, type a quick observation and hit Add entry. Each entry is saved with a timestamp, so you can add more as the tryout goes on. The pencil turns dark when notes exist.</li>
         <li><b>Goalies have their own table</b> below the skaters in each age group — don't forget them! Their skills are scored as Skill 1, 2, 3.</li>
         <li><b>Tap a player's name</b> to open the full scoring page.</li>
         <li><b>You can change any score at any time</b> — just tap the dropdown again. Made a mistake? Tap <b>My history</b> to see everything you entered and restore an earlier version.</li>
@@ -478,6 +478,7 @@ function esc(s){ const d = document.createElement("div"); d.textContent = s ?? "
 function fullName(p){ return (p.first_name ? p.first_name + " " : "") + p.last_name; }
 function isGoalie(p){ return (p.position || "").trim().toLowerCase().startsWith("g"); }
 function fmt(n){ return n == null ? "–" : (Math.round(n*10)/10).toFixed(1); }
+function fmtWhen(ts){ return ts ? new Date(ts).toLocaleString([], {month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}) : ""; }
 function playerIssues(p){
   const miss = [];
   if (!p.last_name) miss.push("last name");
@@ -678,6 +679,7 @@ function baseRowFrom(p, existing){
     skating: existing.skating ?? null, compete: existing.compete ?? null,
     hockey_iq: existing.hockey_iq ?? null, overall: existing.overall ?? null,
     notes: existing.notes ?? null,
+    notes_updated_at: existing.notes_updated_at ?? null,
     updated_at: new Date().toISOString()
   };
 }
@@ -723,8 +725,8 @@ function renderEvalTables(){
       const sorted = sortRows(list, evalSort, getVal);
       let html = '<table><thead><tr>' +
         th("#","num",evalSort,"num") + th("Name","name",evalSort) +
-        '<th class="num">Note</th>' +
         th("Pos","pos",evalSort,"num") +
+        '<th class="num">Notes</th>' +
         cols.map(c => th(c[0], c[1], evalSort, "num")).join("") +
         '</tr></thead><tbody>';
       const totalCols = 4 + cols.length;
@@ -733,8 +735,8 @@ function renderEvalTables(){
         html += '<tr>' +
           '<td class="num pcell" data-pid="'+p.id+'"><b>'+(p.jersey_number ?? "–")+'</b></td>' +
           '<td class="pcell" data-pid="'+p.id+'"><u>'+esc(fullName(p))+'</u></td>' +
-          '<td class="num"><button class="notebtn'+(sc.notes?' has':'')+'" data-pid="'+p.id+'" title="'+(sc.notes?'View/edit note':'Add note')+'">'+(sc.notes?'&#128221;':'&#9998;')+'</button></td>' +
           '<td class="num">'+esc(p.position||"–")+'</td>' +
+          '<td class="num"><button class="notebtn'+(sc.notes?' has':'')+'" data-pid="'+p.id+'" title="'+(sc.notes?'View/edit note':'Add note')+'">'+(sc.notes?'&#128221;':'&#9998;')+'</button></td>' +
           cols.map(c => {
             const v = sc[c[1]] ?? null;
             let opts = '<option value="">–</option>';
@@ -744,10 +746,15 @@ function renderEvalTables(){
           }).join("") + '</tr>';
         if (noteOpen[p.id]){
           html += '<tr class="detail"><td colspan="'+totalCols+'">' +
-            '<label style="margin-top:0;">My note on '+esc(fullName(p))+'</label>' +
-            '<textarea class="notearea" data-pid="'+p.id+'" placeholder="Quick observations...">'+esc(sc.notes||"")+'</textarea>' +
+            '<label style="margin-top:0;">Add a note on '+esc(fullName(p))+'</label>' +
+            '<div style="display:flex;gap:8px;">' +
+            '<input class="noteentry" data-pid="'+p.id+'" placeholder="Quick observation... saves with a timestamp">' +
+            '<button class="btn small noteadd" data-pid="'+p.id+'" style="white-space:nowrap;">Add entry</button>' +
+            '</div>' +
+            '<label>Full note '+(sc.notes_updated_at ? '<span style="font-weight:600;text-transform:none;">(last edited '+fmtWhen(sc.notes_updated_at)+')</span>' : '')+'</label>' +
+            '<textarea class="notearea" data-pid="'+p.id+'" placeholder="Entries appear here — edit freely to fix mistakes">'+esc(sc.notes||"")+'</textarea>' +
             '<div style="display:flex;gap:8px;margin-top:8px;">' +
-            '<button class="btn small notesave" data-pid="'+p.id+'">Save note</button>' +
+            '<button class="btn small notesave" data-pid="'+p.id+'">Save edits</button>' +
             '<button class="btn small dark noteclose" data-pid="'+p.id+'">Close</button>' +
             '</div></td></tr>';
         }
@@ -763,12 +770,40 @@ function renderEvalTables(){
       tw.querySelectorAll("button.noteclose").forEach(b => {
         b.onclick = () => { noteOpen[b.dataset.pid] = false; renderEvalTables(); };
       });
+      tw.querySelectorAll("button.noteadd").forEach(b => {
+        b.onclick = async () => {
+          const p = players.find(x => x.id === b.dataset.pid);
+          const inp = tw.querySelector('input.noteentry[data-pid="'+p.id+'"]');
+          const txt = (inp.value || "").trim();
+          if (!txt) return;
+          const existing = myScoreFor(p) || {};
+          const stamp = fmtWhen(new Date().toISOString());
+          const row = baseRowFrom(p, existing);
+          row.notes = (existing.notes ? existing.notes + "\n" : "") + stamp + " — " + txt;
+          row.notes_updated_at = new Date().toISOString();
+          b.disabled = true;
+          const ok = await pushScore(row);
+          if (!ok) queueScore(row);
+          toast(ok ? "Note added ✓" : "Saved on phone — will sync");
+          renderEvalTables();
+        };
+      });
+      tw.querySelectorAll("input.noteentry").forEach(inp => {
+        inp.addEventListener("keydown", e => {
+          if (e.key === "Enter"){
+            const b = tw.querySelector('button.noteadd[data-pid="'+inp.dataset.pid+'"]');
+            if (b) b.click();
+          }
+        });
+      });
       tw.querySelectorAll("button.notesave").forEach(b => {
         b.onclick = async () => {
           const p = players.find(x => x.id === b.dataset.pid);
           const ta = tw.querySelector('textarea.notearea[data-pid="'+p.id+'"]');
-          const row = baseRowFrom(p, myScoreFor(p) || {});
+          const existing = myScoreFor(p) || {};
+          const row = baseRowFrom(p, existing);
           row.notes = (ta.value || "").trim() || null;
+          if (row.notes !== (existing.notes ?? null)) row.notes_updated_at = new Date().toISOString();
           b.disabled = true;
           const ok = await pushScore(row);
           if (!ok) queueScore(row);
@@ -833,12 +868,15 @@ function renderCatButtons(){
 $("backBtn").onclick = () => { renderEvalTables(); show("evalListView"); };
 $("saveScoreBtn").onclick = async () => {
   if (!draft.overall){ $("scoreErr").textContent = "Overall score is required."; return; }
+  const existing = myScoreFor(currentPlayer) || {};
+  const newNotes = $("scoreNotes").value.trim() || null;
   const row = {
     player_id: currentPlayer.id, evaluator_id: me.id,
     jamboree: draft.jamboree,
     skating: draft.skating, compete: draft.compete,
     hockey_iq: draft.hockey_iq, overall: draft.overall,
-    notes: $("scoreNotes").value.trim() || null,
+    notes: newNotes,
+    notes_updated_at: newNotes !== (existing.notes ?? null) ? new Date().toISOString() : (existing.notes_updated_at ?? null),
     updated_at: new Date().toISOString()
   };
   $("saveScoreBtn").disabled = true;
@@ -870,7 +908,7 @@ async function loadHistory(){
       '<b>'+esc(pname)+'</b>' +
       '<span class="vals">'+lbl[0]+' '+(h.jamboree??"–")+' &middot; '+lbl[1]+' '+(h.overall??"–")+' &middot; '+lbl[2]+' '+(h.skating??"–")+
       ' &middot; '+lbl[3]+' '+(h.compete??"–")+' &middot; '+lbl[4]+' '+(h.hockey_iq??"–")+'</span>' +
-      (h.notes ? '<span class="desc" style="width:100%;margin:0;">&ldquo;'+esc(h.notes)+'&rdquo;</span>' : '');
+      (h.notes ? '<span class="desc" style="width:100%;margin:0;white-space:pre-line;">&ldquo;'+esc(h.notes)+'&rdquo;</span>' : '');
     if (p){
       const btn = document.createElement("button");
       btn.className = "link"; btn.textContent = "Restore";
@@ -880,6 +918,7 @@ async function loadHistory(){
           jamboree: h.jamboree ?? null,
           skating: h.skating, compete: h.compete, hockey_iq: h.hockey_iq,
           overall: h.overall, notes: h.notes,
+          notes_updated_at: h.notes_updated_at ?? null,
           updated_at: new Date().toISOString()
         };
         const ok = await pushScore(row2);
@@ -969,23 +1008,30 @@ function renderAdminTables(){
       const getVal = (d, k) => {
         if (k === "name") return fullName(d.p);
         if (k === "num") return d.p.jersey_number;
+        if (k === "pos") return d.p.position;
         if (k === "evals") return d.rows.length;
+        if (k === "nnotes") return d.rows.filter(r => r.notes).length;
         return d[k];
       };
       const data = sortRows(list, adminSort, getVal);
       let html = '<table><thead><tr>' +
         th("#","num",adminSort,"num") + th("Name","name",adminSort) +
+        th("Pos","pos",adminSort,"num") + th("Evals","evals",adminSort,"num") +
+        th("Notes","nnotes",adminSort,"num") +
         th(labels.jamboree,"jamboree",adminSort,"num") +
-        th(labels.overall,"overall",adminSort,"num") + th("Evals","evals",adminSort,"num") +
+        th(labels.overall,"overall",adminSort,"num") +
         th(labels.skating,"skating",adminSort,"num") + th(labels.compete,"compete",adminSort,"num") +
         th(labels.hockey_iq,"hockey_iq",adminSort,"num") + '</tr></thead><tbody>';
       data.forEach(d => {
+        const nn = d.rows.filter(r => r.notes).length;
         html += '<tr class="rowlink" data-id="'+d.p.id+'">' +
           '<td class="num"><b>'+(d.p.jersey_number ?? "–")+'</b></td>' +
           '<td>'+esc(fullName(d.p))+'</td>' +
+          '<td class="num">'+esc(d.p.position||"–")+'</td>' +
+          '<td class="num'+(d.rows.length===0?' noevals':'')+'">'+(d.rows.length===0?'&#9888; 0':d.rows.length)+'</td>' +
+          '<td class="num">'+(nn ? '&#128221; '+nn : '–')+'</td>' +
           '<td class="num">'+fmt(d.jamboree)+'</td>' +
           '<td class="num avg">'+fmt(d.overall)+'</td>' +
-          '<td class="num'+(d.rows.length===0?' noevals':'')+'">'+(d.rows.length===0?'&#9888; 0':d.rows.length)+'</td>' +
           '<td class="num">'+fmt(d.skating)+'</td>' +
           '<td class="num">'+fmt(d.compete)+'</td>' +
           '<td class="num">'+fmt(d.hockey_iq)+'</td></tr>';
@@ -996,9 +1042,9 @@ function renderAdminTables(){
             inner += '<div class="evalnote"><b>'+esc(profileNames[r.evaluator_id] || "Evaluator")+'</b>' +
               '<span class="nums"> jamboree '+(r.jamboree??"–")+' &middot; overall '+(r.overall??"–")+' &middot; '+short[0]+' '+(r.skating??"–")+
               ' &middot; '+short[1]+' '+(r.compete??"–")+' &middot; '+short[2]+' '+(r.hockey_iq??"–")+'</span>' +
-              (r.notes ? '<div>'+esc(r.notes)+'</div>' : '')+'</div>';
+              (r.notes ? '<div style="white-space:pre-line;">'+esc(r.notes)+(r.notes_updated_at ? ' <span class="nums">(last entry '+fmtWhen(r.notes_updated_at)+')</span>' : '')+'</div>' : '')+'</div>';
           });
-          html += '<tr class="detail"><td colspan="8">'+inner+'</td></tr>';
+          html += '<tr class="detail"><td colspan="10">'+inner+'</td></tr>';
         }
       });
       html += '</tbody></table>';
@@ -1310,11 +1356,12 @@ $("exportSummaryBtn").onclick = () => {
   downloadCSV("tryout-summary.csv", rows);
 };
 $("exportDetailBtn").onclick = () => {
-  const rows = [["Category","Jersey","First name","Last name","Birth date","Position","Evaluator","Jamboree","Overall","Skill 1 (Skating/G1)","Skill 2 (Compete/G2)","Skill 3 (IQ/G3)","Notes"]];
+  const rows = [["Category","Jersey","First name","Last name","Birth date","Position","Evaluator","Jamboree","Overall","Skill 1 (Skating/G1)","Skill 2 (Compete/G2)","Skill 3 (IQ/G3)","Notes","Note last edited"]];
   players.forEach(p => {
     allScores.filter(s => s.player_id === p.id && hasEntry(s)).forEach(r =>
       rows.push([p.category || "Uncategorized", p.jersey_number, p.first_name, p.last_name, p.birth_date, p.position,
-        profileNames[r.evaluator_id] || "", r.jamboree, r.overall, r.skating, r.compete, r.hockey_iq, r.notes || ""]));
+        profileNames[r.evaluator_id] || "", r.jamboree, r.overall, r.skating, r.compete, r.hockey_iq, r.notes || "",
+        r.notes_updated_at ? new Date(r.notes_updated_at).toLocaleString() : ""]));
   });
   downloadCSV("tryout-detail.csv", rows);
 };
