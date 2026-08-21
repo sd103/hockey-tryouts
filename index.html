@@ -210,7 +210,7 @@
         <option value="3-4">Overall 3–4</option>
         <option value="4-5">Overall 4–5</option>
       </select>
-      <button id="evalNSF" class="togglebtn">Not scored yet</button>
+      <button id="evalNSF" class="togglebtn">No Overall Score</button>
     </div>
     <div class="toolbar">
       <input id="searchBox" placeholder="Search name or number..." style="flex:1;">
@@ -244,8 +244,8 @@
     <div class="tabs">
       <button id="tabScores" class="on">Live scores</button>
       <button id="tabRoster">Roster</button>
-      <button id="tabEvals">Evaluators</button>
-      <button id="tabActivity">Activity</button>
+      <button id="tabEvals">Add Evaluators</button>
+      <button id="tabActivity">Evaluator Activity</button>
     </div>
 
     <!-- live scores -->
@@ -265,12 +265,12 @@
           <option value="3-4">Avg 3–4</option>
           <option value="4-5">Avg 4–5</option>
         </select>
-        <button id="adminNSF" class="togglebtn">No entries yet</button>
         <select id="adminEvF"><option value="All">All evaluators (averages)</option></select>
+        <button id="adminNSF" class="togglebtn">No Overall Score</button>
       </div>
       <div class="toolbar">
-        <button id="exportSummaryBtn" class="btn small">Summary CSV</button>
-        <button id="exportDetailBtn" class="btn small">Detail CSV</button>
+        <input id="adminSearch" placeholder="Search name or number..." style="flex:1;min-width:160px;">
+        <button id="exportBtn" class="btn small">Export to Excel</button>
         <span class="count" id="scoreCount"></span>
       </div>
       <p class="desc">1 = best, 5 = worst. <b>Combined</b> = each evaluator's average across sessions, then averaged across evaluators; <b>S1/S2/S3</b> = that session only. Blanks are never averaged in. Ranked by Overall (lowest first). Tap a row to see each evaluator's scores and notes. Updates live.</p>
@@ -303,8 +303,8 @@
           </div>
         </div>
         <div class="grid2">
-          <div><label>Level played LY</label><input id="pLevel" placeholder="e.g. B, A, AA"></div>
-          <div><label>Organisation</label><input id="pOrg"></div>
+          <div><label>Level played LY</label><select id="pLevel"></select></div>
+          <div><label>Organisation</label><select id="pOrg"></select></div>
         </div>
         <div class="err" id="rosterErr"></div>
         <div style="display:flex;gap:8px;margin-top:10px;">
@@ -317,7 +317,7 @@
         <h3 style="margin-top:0;">Import players from CSV</h3>
         <p style="font-size:13px;color:var(--muted);margin:4px 0 10px;">
           Columns: first_name, last_name, birth_date, jersey_number, position (F/D/G), category (M11/M13/M15/M17/M19),
-          level_last_year, organisation. Only last_name is required.
+          level_last_year (e.g. M11-B), organisation (Hockey West Island, DDO, Pierrefonds, Lakeshore). Only last_name is required.
           Category is auto-assigned from birth date when blank. Dates like 2015-07-29 or 7/29/15 both work.
         </p>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
@@ -384,6 +384,7 @@
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 "use strict";
 
@@ -394,6 +395,15 @@ const SCALE_MAX = 5; // 1 = best, 5 = worst
 const SEASON_YEAR = 2026;
 const AGE_CATS = ["M11","M13","M15","M17","M19"];
 const UNC = "__unc__";
+const LEVELS = ["None","Private","RESQ","M9-1","M9-2","M9-3","M9-4",
+  ...["M11","M13","M15","M17","M19"].flatMap(c => ["C","B","A","BB","AA"].map(l => c+"-"+l))];
+const ORGS = ["None","Hockey West Island","DDO","Pierrefonds","Lakeshore"];
+function fillSelect(id, list, value){
+  const sel = $(id);
+  const opts = list.slice();
+  if (value && !opts.includes(value)) opts.push(value);   // keep a legacy/imported value visible
+  sel.innerHTML = opts.map(o => '<option'+(o===(value||"None")?' selected':'')+'>'+esc(o)+'</option>').join("");
+}
 // Sessions: S1 uses the original columns (overall, skating, ...), S2/S3 use s2_/s3_ prefixes.
 const SESSIONS = [1,2,3];
 const SKILLS = ["overall","skating","compete","hockey_iq"];
@@ -1044,6 +1054,7 @@ function playerAgg(pool, sess, evId){ return pool.map(p => aggOne(p, sess, evId)
 $("adminPosF").onchange = () => { adminFilters.pos = $("adminPosF").value; renderAdminTables(); };
 $("adminOvF").onchange  = () => { adminFilters.ov  = $("adminOvF").value;  renderAdminTables(); };
 $("adminNSF").onclick   = () => { adminFilters.ns = !adminFilters.ns; renderAdminTables(); };
+$("adminSearch").addEventListener("input", renderAdminTables);
 $("adminEvF").onchange  = () => { adminFilters.ev  = $("adminEvF").value;  renderAdminTables(); };
 function fillEvFilter(){
   const sel = $("adminEvF"), cur = adminFilters.ev;
@@ -1070,10 +1081,12 @@ function renderAdminTables(){
     if (!catPlayers.length) return;
     const sess = adminSess[cat] ?? "all";
     const showJam = cat === "M11";
+    const q = ($("adminSearch").value || "").toLowerCase();
     const agg = playerAgg(catPlayers, sess, adminFilters.ev).filter(d => {
+      if (q && !fullName(d.p).toLowerCase().includes(q) && !String(d.p.jersey_number).includes(q)) return false;
       if (!posMatch(d.p, adminFilters.pos)) return false;
       if (!ovMatch(d.overall, adminFilters.ov)) return false;
-      if (adminFilters.ns && d.entries > 0) return false;
+      if (adminFilters.ns && d.overall != null) return false;
       return true;
     });
 
@@ -1131,7 +1144,7 @@ function renderAdminTables(){
             const avgs = SKILLS.map((k,i) => short[i] + " " + fmt(evalAvg(r, k))).join(" ");
             inner += '<div class="evalnote"><b>'+esc(profileNames[r.evaluator_id] || "Evaluator")+'</b>' +
               (r.override ? ' <span class="ovflag">&#9873; override — these scores replace the averages</span>' : '') +
-              '<span class="nums"> '+scoreSummary(r, d.p)+(nScores(r) > (hasJamboree(d.p) && r.jamboree != null ? 1 : 0) ? ' &middot; <b>Avg</b> '+avgs : '')+'</span>' +
+              '<span class="nums"> '+(nScores(r) > (hasJamboree(d.p) && r.jamboree != null ? 1 : 0) ? '<b>Avg</b> '+avgs+' &middot; ' : '')+scoreSummary(r, d.p)+'</span>' +
               (r.notes ? '<div style="white-space:pre-line;">'+esc(r.notes)+(r.notes_updated_at ? ' <span class="nums">(last entry '+fmtWhen(r.notes_updated_at)+')</span>' : '')+'</div>' : '')+'</div>';
           });
           html += '<tr class="detail"><td colspan="'+totalCols+'">'+inner+'</td></tr>';
@@ -1175,18 +1188,20 @@ function readPlayerForm(){
     birth_date: $("pBirth").value || null,
     position: $("pPos").value,
     category: $("pCat").value,
-    level_last_year: $("pLevel").value.trim() || null,
-    organisation: $("pOrg").value.trim() || null
+    level_last_year: $("pLevel").value === "None" ? null : $("pLevel").value,
+    organisation: $("pOrg").value === "None" ? null : $("pOrg").value
   };
 }
 function clearPlayerForm(){
-  ["pFirst","pLast","pNum","pBirth","pLevel","pOrg"].forEach(id => $(id).value = "");
+  ["pFirst","pLast","pNum","pBirth"].forEach(id => $(id).value = "");
+  fillSelect("pLevel", LEVELS, null); fillSelect("pOrg", ORGS, null);
   editingId = null;
   $("pFormTitle").textContent = "Add player";
   $("savePlayerBtn").textContent = "Add player";
   $("cancelEditBtn").classList.add("hidden");
 }
 $("cancelEditBtn").onclick = clearPlayerForm;
+fillSelect("pLevel", LEVELS, null); fillSelect("pOrg", ORGS, null);
 $("savePlayerBtn").onclick = async () => {
   $("rosterErr").textContent = "";
   const row = readPlayerForm();
@@ -1227,8 +1242,8 @@ function renderRoster(){
       $("pNum").value = p.jersey_number ?? ""; $("pBirth").value = p.birth_date ?? "";
       $("pPos").value = p.position || "F";
       $("pCat").value = p.category || (catFromBirthDate(p.birth_date) || "M11");
-      $("pLevel").value = p.level_last_year || "";
-      $("pOrg").value = p.organisation || "";
+      fillSelect("pLevel", LEVELS, p.level_last_year || null);
+      fillSelect("pOrg", ORGS, p.organisation || null);
       $("pFormTitle").textContent = "Edit player";
       $("savePlayerBtn").textContent = "Save changes";
       $("cancelEditBtn").classList.remove("hidden");
@@ -1267,7 +1282,7 @@ function parseCSV(text){
 $("csvTemplateBtn").onclick = () => {
   downloadCSV("players-template.csv", [
     ["first_name","last_name","birth_date","jersey_number","position","category","level_last_year","organisation"],
-    ["Alex","Tremblay","2014-05-20","17","F","","A","CHA"]
+    ["Alex","Tremblay","2014-05-20","17","F","","M11-B","Lakeshore"]
   ]);
 };
 $("csvImportBtn").onclick = async () => {
@@ -1429,7 +1444,7 @@ async function loadEvents(){
 }
 $("refreshActivityBtn").onclick = () => { refreshScores(); loadEvents(); };
 
-/* ---------- CSV export ---------- */
+/* ---------- CSV (roster template) ---------- */
 function downloadCSV(name, rows){
   const csv = rows.map(r => r.map(c => {
     c = c == null ? "" : String(c);
@@ -1440,40 +1455,55 @@ function downloadCSV(name, rows){
   a.download = name;
   a.click();
 }
-$("exportSummaryBtn").onclick = () => {
-  const skillHdr = pre => SKILLS.map(k => pre + " " + ({overall:"Overall",skating:"Skill 1 (Skating/G1)",compete:"Skill 2 (Compete/G2)",hockey_iq:"Skill 3 (IQ/G3)"})[k]);
-  const rows = [["Category","Type","Rank","Jersey","First name","Last name","Birth date","Position","Org","Level",
-    "Jamboree (M11 only)", ...skillHdr("Combined"), ...skillHdr("S1"), ...skillHdr("S2"), ...skillHdr("S3"),
-    "# Evaluators","Entries","Notes"]];
+
+/* ---------- Excel export: Summary tab + one tab per evaluator ---------- */
+const SKILL_NAMES = { overall:"Overall", skating:"Skill 1 (Skating/G1)", compete:"Skill 2 (Compete/G2)", hockey_iq:"Skill 3 (IQ/G3)" };
+function xv(n){ return n == null ? "" : Math.round(n*10)/10; }   // numeric cells stay numbers in Excel
+function sheetFrom(rows, widths){
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws["!cols"] = widths.map(w => ({ wch: w }));
+  ws["!freeze"] = { xSplit: 0, ySplit: 1 };
+  return ws;
+}
+$("exportBtn").onclick = () => {
+  if (typeof XLSX === "undefined"){ alert("Excel library didn't load — check your connection and refresh."); return; }
+  const wb = XLSX.utils.book_new();
+  const hdr = pre => SKILLS.map(k => pre + " " + SKILL_NAMES[k]);
+
+  // Summary: same numbers as the dashboard (Combined, then S1/S2/S3)
+  const sum = [["Category","Type","Rank","#","First name","Last name","Birth date","Pos","Org","Level LY",
+    "Jamboree (M11)", ...hdr("Combined"), ...hdr("S1"), ...hdr("S2"), ...hdr("S3"), "# Evaluators","Entries","Notes"]];
   [...AGE_CATS, UNC].forEach(cat => {
     [["Skater", p => !isGoalie(p)], ["Goalie", isGoalie]].forEach(([type, test]) => {
-      const list = playerAgg(players.filter(p => inGroup(p, cat) && test(p)), "all")
-        .sort((a,b) => (a.overall ?? 99) - (b.overall ?? 99));
-      list.forEach((d,i) => {
-        const per = SESSIONS.map(x => aggOne(d.p, x));
-        rows.push([groupLabel(cat), type, i+1, d.p.jersey_number, d.p.first_name, d.p.last_name,
-          d.p.birth_date, d.p.position, d.p.organisation, d.p.level_last_year,
-          fmt(d.jamboree), ...SKILLS.map(k => fmt(d[k])),
-          ...per.flatMap(s => SKILLS.map(k => fmt(s[k]))),
-          d.rows.length, d.entries, d.notes]);
-      });
+      playerAgg(players.filter(p => inGroup(p, cat) && test(p)), "all")
+        .sort((a,b) => (a.overall ?? 99) - (b.overall ?? 99))
+        .forEach((d,i) => {
+          const per = SESSIONS.map(x => aggOne(d.p, x));
+          sum.push([groupLabel(cat), type, i+1, d.p.jersey_number, d.p.first_name, d.p.last_name, d.p.birth_date, d.p.position,
+            d.p.organisation, d.p.level_last_year, xv(d.jamboree), ...SKILLS.map(k => xv(d[k])),
+            ...per.flatMap(s => SKILLS.map(k => xv(s[k]))), d.rows.length, d.entries, d.notes]);
+        });
     });
   });
-  downloadCSV("tryout-summary.csv", rows);
-};
-$("exportDetailBtn").onclick = () => {
-  const skillHdr = pre => SKILLS.map(k => pre + " " + ({overall:"Overall",skating:"Skill 1 (Skating/G1)",compete:"Skill 2 (Compete/G2)",hockey_iq:"Skill 3 (IQ/G3)"})[k]);
-  const rows = [["Category","Jersey","First name","Last name","Birth date","Position","Evaluator","Jamboree (M11 only)",
-    ...skillHdr("S1"), ...skillHdr("S2"), ...skillHdr("S3"), ...skillHdr("Evaluator avg"), "Notes","Note last edited"]];
-  players.forEach(p => {
-    allScores.filter(s => s.player_id === p.id && hasAny(s)).forEach(r =>
-      rows.push([p.category || "Uncategorized", p.jersey_number, p.first_name, p.last_name, p.birth_date, p.position,
-        profileNames[r.evaluator_id] || "", hasJamboree(p) ? r.jamboree : "",
-        ...SESSIONS.flatMap(x => SKILLS.map(k => r[col(k,x)])),
-        ...SKILLS.map(k => fmt(evalAvg(r, k))),
+  XLSX.utils.book_append_sheet(wb, sheetFrom(sum, [8,7,5,4,12,14,11,5,18,9, 9, 9,9,9,9, 9,9,9,9, 9,9,9,9, 9,9,9,9, 11,8,6]), "Summary");
+
+  // One tab per evaluator: their raw scores, Avg first then S1/S2/S3, then notes
+  profiles.forEach(ev => {
+    const mine = allScores.filter(s => s.evaluator_id === ev.id && hasAny(s));
+    if (!mine.length) return;
+    const rows = [["Category","#","First name","Last name","Pos","Jamboree (M11)", ...hdr("Avg"), ...hdr("S1"), ...hdr("S2"), ...hdr("S3"), "Notes","Note last edited"]];
+    const byP = {}; players.forEach(p => byP[p.id] = p);
+    mine.map(r => ({ r, p: byP[r.player_id] })).filter(x => x.p)
+      .sort((a,b) => (a.p.category||"zz").localeCompare(b.p.category||"zz") || (a.p.jersey_number||0) - (b.p.jersey_number||0))
+      .forEach(({r,p}) => rows.push([p.category || "Uncategorized", p.jersey_number, p.first_name, p.last_name, p.position,
+        hasJamboree(p) ? (r.jamboree ?? "") : "",
+        ...SKILLS.map(k => xv(evalAvg(r, k))),
+        ...SESSIONS.flatMap(x => SKILLS.map(k => r[col(k,x)] ?? "")),
         r.notes || "", r.notes_updated_at ? new Date(r.notes_updated_at).toLocaleString() : ""]));
+    const name = ev.display_name.replace(/[\\\/\?\*\[\]:]/g, "").slice(0, 31) || "Evaluator";
+    XLSX.utils.book_append_sheet(wb, sheetFrom(rows, [8,4,12,14,5,9, 9,9,9,9, 9,9,9,9, 9,9,9,9, 9,9,9,9, 50,18]), name);
   });
-  downloadCSV("tryout-detail.csv", rows);
+  XLSX.writeFile(wb, "grizzlies-tryout-" + new Date().toISOString().slice(0,10) + ".xlsx");
 };
 
 init();
