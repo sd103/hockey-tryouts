@@ -178,7 +178,7 @@
       <h2 style="margin-top:0;">Welcome! Here's how it works</h2>
       <ul class="helplist">
         <li><b>Pick an age group</b> (M11, M13...) using the buttons at the top.</li>
-        <li><b>Pick the session</b> — each age group has an <b>S1 / S2 / S3 / Avg</b> switch. Tap the session you're watching and it stays selected for that age group (other age groups can be on a different session). <b>Avg</b> shows your own average across sessions and is read-only.</li>
+        <li><b>Pick the session</b> — each age group opens on <b>Avg</b> (your own average across sessions, read-only). Tap <b>S1 / S2 / S3</b> to score the session you're watching; it stays selected for that age group until you reload (other age groups can be on a different session).</li>
         <li><b>Score players right in the table</b> — tap the dropdowns to give 1–5 for Overall, Skating, Compete and Hockey IQ (plus Jamboree for M11 only). <b>1 = best, 5 = worst.</b> Scores save the moment you pick them. Leave anything you didn't see blank — blanks are never averaged in.</li>
         <li><b>Add notes with the pencil</b> — tap the ✎ next to a player's name, type your observation and tap Add note. A timestamp is added automatically, and you can keep adding entries as the tryout goes on. The pencil turns dark when notes exist. To fix a mistake in a note, tap the player's name and edit the notes on their scoring page.</li>
         <li><b>Goalies have their own table</b> below the skaters in each age group — don't forget them! Their skills are scored as Skill 1, 2, 3.</li>
@@ -485,15 +485,15 @@ let expanded = {};
 let noteOpen = {};
 let editingId = null;
 let adminScoring = false; // admin currently in scoring mode
-let evalSess = {};   // evaluator's selected session per age category: 1|2|3|"avg" (saved on this phone)
+let evalSess = {};   // evaluator's selected session per age category: 1|2|3|"avg" — always starts on "avg", kept only while the page is open
 let adminSess = {};  // admin's selected view per age category: "all"|1|2|3
 let scoreSess = "avg";   // session selected on the full scoring page ("avg" | 1 | 2 | 3)
 let scoreSessHint = 1;
 let drafts = {};     // scoring page drafts: { jamboree, 1:{...}, 2:{...}, 3:{...} }
 function sessKey(){ return "sess_" + (me ? me.id : "anon"); }
-function loadSess(){ try { evalSess = JSON.parse(localStorage.getItem(sessKey())) || {}; } catch(e){ evalSess = {}; } }
-function getSess(cat){ return evalSess[cat] ?? 1; }
-function setSess(cat, v){ evalSess[cat] = v; localStorage.setItem(sessKey(), JSON.stringify(evalSess)); }
+function loadSess(){ evalSess = {}; }
+function getSess(cat){ return evalSess[cat] ?? "avg"; }
+function setSess(cat, v){ evalSess[cat] = v; }
 function segHTML(current, opts, cls){
   return '<div class="seg'+(cls ? " "+cls : "")+'">' +
     opts.map(o => '<button data-v="'+o[0]+'" class="'+(String(o[0])===String(current)?"on":"")+'">'+o[1]+'</button>').join("") +
