@@ -93,6 +93,8 @@
   .scale button{flex:1;padding:14px 0;font-size:18px;font-weight:800;background:#e2e9ed;color:var(--ink);}
   .scale button.sel{background:var(--teal);color:#fff;}
   .overall .scale button.sel{background:var(--ink);}
+  .ovflag{color:var(--bad);font-weight:800;cursor:help;}
+  .btn.danger{background:var(--bad);}
   .scale button.avgbox{background:#f3f8fa;color:var(--teal-dark);border:1px solid var(--line);cursor:default;}
   .catlabel{display:flex;justify-content:space-between;align-items:baseline;margin:14px 0 2px;}
   .catlabel b{font-size:15px;text-transform:uppercase;letter-spacing:.03em;}
@@ -181,7 +183,7 @@
         <li><b>Add notes with the pencil</b> — tap the ✎ next to a player's name, type your observation and tap Add note. A timestamp is added automatically, and you can keep adding entries as the tryout goes on. The pencil turns dark when notes exist. To fix a mistake in a note, tap the player's name and edit the notes on their scoring page.</li>
         <li><b>Goalies have their own table</b> below the skaters in each age group — don't forget them! Their skills are scored as Skill 1, 2, 3.</li>
         <li><b>Tap a player's name</b> to open the full scoring page.</li>
-        <li><b>You can change any score at any time</b> — just tap the dropdown again. Made a mistake? Tap <b>My history</b> to see everything you entered and restore an earlier version.</li>
+        <li><b>You can change any score at any time</b> — just tap the dropdown again, or use the – option to clear it.</li>
         <li><b>Bad rink wifi?</b> No problem. Scores save on your phone and send automatically when connection returns. A banner shows anything still waiting.</li>
         <li><b>Only you and the admin see your scores.</b> Other evaluators can't.</li>
       </ul>
@@ -212,20 +214,10 @@
     </div>
     <div class="toolbar">
       <input id="searchBox" placeholder="Search name or number..." style="flex:1;">
-      <button id="historyBtn" class="btn small dark">My history</button>
     </div>
     <p class="desc">1 = best &middot; 5 = worst. Pick the session for each age group, then tap a dropdown to score — it saves instantly. Tap the ✎ to add a note, or a name for the full scoring page. Goalies have their own table below the skaters.</p>
     <div class="mobilehint">Tip: swipe tables sideways or rotate your phone to see every column.</div>
     <div id="evalTables"></div>
-  </section>
-
-  <!-- EVALUATOR: history -->
-  <section id="historyView" class="hidden">
-    <div class="card">
-      <h3 style="margin-top:0;">My scoring history</h3>
-      <p class="desc">Every score you've saved, newest first. Spot a mistake? Tap Restore on the entry that was correct — it puts that player's scores back to that moment.</p>
-      <div id="historyList" style="max-height:60vh;overflow-y:auto;"></div>
-    </div>
   </section>
 
   <!-- EVALUATOR: scoring -->
@@ -240,6 +232,10 @@
       <textarea id="scoreNotes" placeholder="Quick observations..."></textarea>
       <div class="err" id="scoreErr"></div>
       <button id="saveScoreBtn" class="btn dark" style="width:100%;margin-top:10px;">Save score</button>
+      <div id="overrideBox" class="hidden" style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px;">
+        <div id="overrideState" class="desc"></div>
+        <button id="overrideBtn" class="btn small" style="width:100%;"></button>
+      </div>
     </div>
   </section>
 
@@ -270,6 +266,7 @@
           <option value="4-5">Avg 4–5</option>
         </select>
         <button id="adminNSF" class="togglebtn">No entries yet</button>
+        <select id="adminEvF"><option value="All">All evaluators (averages)</option></select>
       </div>
       <div class="toolbar">
         <button id="exportSummaryBtn" class="btn small">Summary CSV</button>
@@ -473,7 +470,7 @@ let evalCat = "All", adminCat = "All", rosterCat = "All";
 let evalSort = { key:"num", asc:true };
 let adminSort = { key:"overall", asc:true };
 let evalFilters = { pos:"All", ov:"Any", ns:false };
-let adminFilters = { pos:"All", ov:"Any", ns:false };
+let adminFilters = { pos:"All", ov:"Any", ns:false, ev:"All" };
 let expanded = {};
 let noteOpen = {};
 let editingId = null;
@@ -494,12 +491,12 @@ function segHTML(current, opts, cls){
 }
 
 const $ = id => document.getElementById(id);
-const views = ["loginView","helpView","evalListView","scoreView","historyView","adminView"];
+const views = ["loginView","helpView","evalListView","scoreView","adminView"];
 let currentView = "loginView";
 function show(view){
   currentView = view;
   views.forEach(v => $(v).classList.toggle("hidden", v!==view));
-  $("backBtn").classList.toggle("hidden", view!=="scoreView" && view!=="historyView");
+  $("backBtn").classList.toggle("hidden", view!=="scoreView");
   $("signOutBtn").classList.toggle("hidden", view==="loginView");
   $("changePassHdrBtn").classList.toggle("hidden", view==="loginView");
   $("helpBtn").classList.toggle("hidden", !(me && !me.is_admin && view==="evalListView") && !(me && me.is_admin && adminScoring && view==="evalListView"));
@@ -719,6 +716,7 @@ function baseRowFrom(p, existing){
     notes_updated_at: existing.notes_updated_at ?? null,
     updated_at: new Date().toISOString() };
   ALL_SCORE_COLS.forEach(c => row[c] = existing[c] ?? null);
+  row.override = existing.override === true;
   return row;
 }
 
@@ -892,6 +890,7 @@ function openScore(p, sess){
   $("scoreNotes").value = existing.notes || "";
   $("scoreErr").textContent = "";
   renderCatButtons();
+  renderOverrideBox();
   show("scoreView");
   window.scrollTo(0,0);
 }
@@ -935,6 +934,28 @@ function renderCatButtons(){
     };
   });
 }
+function renderOverrideBox(){
+  const box = $("overrideBox");
+  if (!me || !me.can_override){ box.classList.add("hidden"); return; }
+  box.classList.remove("hidden");
+  const on = (myScoreFor(currentPlayer) || {}).override === true;
+  $("overrideState").innerHTML = on
+    ? '<span class="ovflag">&#9873; Override ON</span> — the dashboard and exports show <b>your</b> scores for this player instead of the evaluator averages (any skill you leave blank falls back to the average).'
+    : 'Override is off — the dashboard shows the evaluator averages for this player.';
+  const b = $("overrideBtn");
+  b.textContent = on ? "Remove override (back to averages)" : "Use my scores for this player";
+  b.className = "btn small" + (on ? " dark" : " danger");
+  b.onclick = async () => {
+    const existing = myScoreFor(currentPlayer) || {};
+    if (!on && !confirm("Override for " + fullName(currentPlayer) + "?\n\nYour scores will REPLACE the evaluator averages for this player on the admin dashboard and in the CSV exports. The other evaluators' scores are kept and you can undo this at any time.")) return;
+    const row = baseRowFrom(currentPlayer, existing);
+    row.override = !on;
+    const ok = await pushScore(row);
+    if (!ok) queueScore(row);
+    toast(ok ? (on ? "Override removed" : "Override ON") : "Saved on phone — will sync");
+    renderOverrideBox();
+  };
+}
 function flatDraft(){
   const o = { jamboree: drafts.jamboree };
   SESSIONS.forEach(x => SKILLS.forEach(k => o[col(k, x)] = drafts[x] ? drafts[x][k] : null));
@@ -971,40 +992,6 @@ function scoreSummary(r, p){
   });
   return parts.length ? parts.join(" &middot; ") : "no scores";
 }
-$("historyBtn").onclick = () => { loadHistory(); show("historyView"); };
-async function loadHistory(){
-  const el = $("historyList");
-  el.innerHTML = "<em>Loading...</em>";
-  const { data, error } = await db.from("score_history").select("*")
-    .eq("evaluator_id", me.id).order("id", { ascending:false }).limit(150);
-  if (error){ el.innerHTML = '<div class="err">'+esc(error.message)+'</div>'; return; }
-  if (!data || !data.length){ el.innerHTML = "<em>No scores saved yet.</em>"; return; }
-  el.innerHTML = "";
-  data.forEach(h => {
-    const p = players.find(x => x.id === h.player_id);
-    const pname = p ? ("#" + (p.jersey_number ?? "–") + " " + fullName(p)) : "(deleted player)";
-    const row = document.createElement("div");
-    row.className = "histrow";
-    row.innerHTML = '<span class="t">'+new Date(h.created_at).toLocaleString([], {month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"})+'</span>' +
-      '<b>'+esc(pname)+'</b>' +
-      '<span class="vals">'+scoreSummary(h, p)+'</span>' +
-      (h.notes ? '<span class="desc" style="width:100%;margin:0;white-space:pre-line;">&ldquo;'+esc(h.notes)+'&rdquo;</span>' : '');
-    if (p){
-      const btn = document.createElement("button");
-      btn.className = "link"; btn.textContent = "Restore";
-      btn.onclick = async () => {
-        const row2 = baseRowFrom({ id: h.player_id }, h);
-        const ok = await pushScore(row2);
-        if (!ok) queueScore(row2);
-        toast(ok ? "Restored ✓" : "Restored — will sync");
-        loadHistory();
-      };
-      row.appendChild(btn);
-    }
-    el.appendChild(row);
-  });
-}
-
 /* ================= ADMIN ================= */
 async function startAdmin(){
   loadSess();
@@ -1027,6 +1014,7 @@ async function loadProfiles(){
   profiles = data || [];
   profileNames = {};
   profiles.forEach(p => profileNames[p.id] = p.display_name);
+  fillEvFilter();
 }
 async function refreshScores(){
   const { data, error } = await db.from("scores").select("*");
@@ -1034,20 +1022,36 @@ async function refreshScores(){
 }
 function avg(rows, key){ return avgOf(rows.map(r => r[key])); }
 // sess = "all" (combined: each evaluator averaged across sessions first, then across evaluators) or 1|2|3
-function aggOne(p, sess){
-  const rows = allScores.filter(s => s.player_id === p.id && hasAny(s));
-  const d = { p, rows,
+// evId: "All" = averages across evaluators (with any override applied); otherwise that one evaluator's raw scores
+function aggOne(p, sess, evId){
+  evId = evId || "All";
+  const rows = allScores.filter(s => s.player_id === p.id && hasAny(s) && (evId === "All" || s.evaluator_id === evId));
+  const ov = evId === "All" ? rows.find(r => r.override === true) : null;
+  const d = { p, rows, override: !!ov, overrideBy: ov ? (profileNames[ov.evaluator_id] || "Evaluator") : null,
     entries: rows.reduce((a,r) => a + nEntries(r), 0),
     notes: rows.reduce((a,r) => a + nNotes(r), 0),
     jamboree: hasJamboree(p) ? avg(rows, "jamboree") : null };
-  SKILLS.forEach(k => d[k] = sess === "all" ? avgOf(rows.map(r => evalAvg(r, k))) : avg(rows, col(k, sess)));
+  if (ov && d.jamboree != null && ov.jamboree != null) d.jamboree = ov.jamboree;
+  SKILLS.forEach(k => {
+    const base = sess === "all" ? avgOf(rows.map(r => evalAvg(r, k))) : avg(rows, col(k, sess));
+    const o = ov ? (sess === "all" ? evalAvg(ov, k) : ov[col(k, sess)]) : null;
+    d[k] = o != null ? o : base;   // blank in the override → fall back to the average
+  });
   return d;
 }
-function playerAgg(pool, sess){ return pool.map(p => aggOne(p, sess)); }
+function playerAgg(pool, sess, evId){ return pool.map(p => aggOne(p, sess, evId)); }
 
 $("adminPosF").onchange = () => { adminFilters.pos = $("adminPosF").value; renderAdminTables(); };
 $("adminOvF").onchange  = () => { adminFilters.ov  = $("adminOvF").value;  renderAdminTables(); };
 $("adminNSF").onclick   = () => { adminFilters.ns = !adminFilters.ns; renderAdminTables(); };
+$("adminEvF").onchange  = () => { adminFilters.ev  = $("adminEvF").value;  renderAdminTables(); };
+function fillEvFilter(){
+  const sel = $("adminEvF"), cur = adminFilters.ev;
+  sel.innerHTML = '<option value="All">All evaluators (averages)</option>' +
+    profiles.map(p => '<option value="'+p.id+'">'+esc(p.display_name)+' only</option>').join("");
+  sel.value = profiles.some(p => p.id === cur) ? cur : "All";
+  adminFilters.ev = sel.value;
+}
 
 function renderAdminTables(){
   renderChips("adminChips", adminCat, c => { adminCat = c; renderAdminTables(); });
@@ -1066,7 +1070,7 @@ function renderAdminTables(){
     if (!catPlayers.length) return;
     const sess = adminSess[cat] ?? "all";
     const showJam = cat === "M11";
-    const agg = playerAgg(catPlayers, sess).filter(d => {
+    const agg = playerAgg(catPlayers, sess, adminFilters.ev).filter(d => {
       if (!posMatch(d.p, adminFilters.pos)) return false;
       if (!ovMatch(d.overall, adminFilters.ov)) return false;
       if (adminFilters.ns && d.entries > 0) return false;
@@ -1077,7 +1081,8 @@ function renderAdminTables(){
     grp.className = "sessgroup";
     grp.innerHTML = '<div class="secttitle'+(cat===UNC?" unc":"")+'">'+groupLabel(cat)+'</div>' +
       '<div class="sessbar"><span class="lbl">View</span>'+segHTML(sess, SESS_OPTS)+
-      '<span class="hint">'+(sess==="all" ? "Combined across sessions" : "Session "+sess+" only")+'</span></div>';
+      '<span class="hint">'+(sess==="all" ? "Combined across sessions" : "Session "+sess+" only")+
+      (adminFilters.ev !== "All" ? ' &middot; <b>'+esc(profileNames[adminFilters.ev]||"")+'\'s scores only</b>' : '')+'</span></div>';
     grp.querySelectorAll(".seg button").forEach(b => {
       b.onclick = () => { adminSess[cat] = b.dataset.v === "all" ? "all" : parseInt(b.dataset.v); renderAdminTables(); };
     });
@@ -1113,7 +1118,7 @@ function renderAdminTables(){
       data.forEach(d => {
         html += '<tr class="rowlink" data-id="'+d.p.id+'">' +
           '<td class="num"><b>'+(d.p.jersey_number ?? "–")+'</b></td>' +
-          '<td>'+esc(fullName(d.p))+'</td>' +
+          '<td>'+esc(fullName(d.p))+(d.override ? ' <span class="ovflag" title="Override by '+esc(d.overrideBy)+' — showing their scores, not the average">&#9873;</span>' : '')+'</td>' +
           '<td class="num">'+esc(d.p.position||"–")+'</td>' +
           '<td class="num'+(d.entries===0?' noevals':'')+'">'+(d.entries===0?'&#9888; 0':d.entries)+'</td>' +
           '<td class="num">'+(d.notes ? '&#128221; '+d.notes : '–')+'</td>' +
@@ -1125,6 +1130,7 @@ function renderAdminTables(){
           d.rows.forEach(r => {
             const avgs = SKILLS.map((k,i) => short[i] + " " + fmt(evalAvg(r, k))).join(" ");
             inner += '<div class="evalnote"><b>'+esc(profileNames[r.evaluator_id] || "Evaluator")+'</b>' +
+              (r.override ? ' <span class="ovflag">&#9873; override — these scores replace the averages</span>' : '') +
               '<span class="nums"> '+scoreSummary(r, d.p)+(nScores(r) > (hasJamboree(d.p) && r.jamboree != null ? 1 : 0) ? ' &middot; <b>Avg</b> '+avgs : '')+'</span>' +
               (r.notes ? '<div style="white-space:pre-line;">'+esc(r.notes)+(r.notes_updated_at ? ' <span class="nums">(last entry '+fmtWhen(r.notes_updated_at)+')</span>' : '')+'</div>' : '')+'</div>';
           });
@@ -1360,6 +1366,10 @@ function renderEvalAdmin(){
       await loadProfiles(); renderEvalAdmin(); renderAdminTables(); renderActivity();
     };
     td.appendChild(ren);
+    const vw = document.createElement("button");
+    vw.className = "link"; vw.textContent = "View scores";
+    vw.onclick = () => { adminFilters.ev = p.id; fillEvFilter(); $("tabScores").click(); renderAdminTables(); window.scrollTo(0,0); };
+    td.appendChild(vw);
     if (!p.is_admin){
       const del = document.createElement("button");
       del.className = "link del"; del.textContent = "Remove";
