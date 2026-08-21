@@ -93,6 +93,7 @@
   .scale button{flex:1;padding:14px 0;font-size:18px;font-weight:800;background:#e2e9ed;color:var(--ink);}
   .scale button.sel{background:var(--teal);color:#fff;}
   .overall .scale button.sel{background:var(--ink);}
+  .scale button.avgbox{background:#f3f8fa;color:var(--teal-dark);border:1px solid var(--line);cursor:default;}
   .catlabel{display:flex;justify-content:space-between;align-items:baseline;margin:14px 0 2px;}
   .catlabel b{font-size:15px;text-transform:uppercase;letter-spacing:.03em;}
   .catlabel span{font-size:12px;color:var(--muted);}
@@ -479,7 +480,8 @@ let editingId = null;
 let adminScoring = false; // admin currently in scoring mode
 let evalSess = {};   // evaluator's selected session per age category: 1|2|3|"avg" (saved on this phone)
 let adminSess = {};  // admin's selected view per age category: "all"|1|2|3
-let scoreSess = 1;   // session selected on the full scoring page
+let scoreSess = "avg";   // session selected on the full scoring page ("avg" | 1 | 2 | 3)
+let scoreSessHint = 1;
 let drafts = {};     // scoring page drafts: { jamboree, 1:{...}, 2:{...}, 3:{...} }
 function sessKey(){ return "sess_" + (me ? me.id : "anon"); }
 function loadSess(){ try { evalSess = JSON.parse(localStorage.getItem(sessKey())) || {}; } catch(e){ evalSess = {}; } }
@@ -726,7 +728,7 @@ function renderEvalTables(){
   const filter = ($("searchBox").value || "").toLowerCase();
   const wrap = $("evalTables");
   wrap.innerHTML = "";
-  const SESS_OPTS = [[1,"S1"],[2,"S2"],[3,"S3"],["avg","Avg"]];
+  const SESS_OPTS = [["avg","Avg"],[1,"S1"],[2,"S2"],[3,"S3"]];
 
   const groups = evalCat === "All" ? [...AGE_CATS, UNC] : [evalCat];
   groups.forEach(cat => {
@@ -880,7 +882,8 @@ function renderEvalTables(){
 
 function openScore(p, sess){
   currentPlayer = p;
-  scoreSess = sess || 1;
+  scoreSess = "avg";            // always open on the average view
+  scoreSessHint = sess || 1;    // session the evaluator was on in the table
   const existing = myScoreFor(p) || {};
   drafts = { jamboree: existing.jamboree ?? null };
   SESSIONS.forEach(x => { drafts[x] = {}; SKILLS.forEach(k => drafts[x][k] = existing[col(k, x)] ?? null); });
@@ -896,16 +899,26 @@ function renderCatButtons(){
   const labels = isGoalie(currentPlayer) ? GOALIE_LABELS : SKATER_LABELS;
   // session switch — switching keeps unsaved picks for every session until you tap Save
   const seg = $("scoreSessSeg");
-  seg.innerHTML = segHTML(scoreSess, SESSIONS.map(x => [x, "Session "+x + (sessionHasData(flatDraft(), x) ? " ✓" : "")]), "big");
-  seg.querySelectorAll("button").forEach(b => { b.onclick = () => { scoreSess = parseInt(b.dataset.v); renderCatButtons(); }; });
+  const flat = flatDraft();
+  const avgMode = scoreSess === "avg";
+  seg.innerHTML = segHTML(scoreSess, [["avg","Average"], ...SESSIONS.map(x => [x, "S"+x + (sessionHasData(flat, x) ? " ✓" : "")])], "big");
+  seg.querySelectorAll("button").forEach(b => { b.onclick = () => { scoreSess = b.dataset.v === "avg" ? "avg" : parseInt(b.dataset.v); renderCatButtons(); }; });
   const wrap = $("scoreCats");
-  wrap.innerHTML = "";
+  wrap.innerHTML = avgMode ? '<p class="desc" style="margin-top:8px;">Your average across the sessions you scored. Tap S1, S2 or S3 above to enter or change scores.</p>' : "";
   const keys = (hasJamboree(currentPlayer) ? ["jamboree"] : []).concat(SKILLS);
   keys.forEach(key => {
     const isJam = key === "jamboree";
-    const cur = isJam ? drafts.jamboree : drafts[scoreSess][key];
     const div = document.createElement("div");
     if (key === "overall") div.className = "overall";
+    if (avgMode){
+      const v = isJam ? drafts.jamboree : evalAvg(flat, key);
+      const sessVals = isJam ? "" : SESSIONS.map(x => "S"+x+" "+(flat[col(key,x)] ?? "–")).join(" &middot; ");
+      div.innerHTML = '<div class="catlabel"><b>'+labels[key]+'</b><span>'+sessVals+'</span></div>' +
+                      '<div class="scale"><button class="avgbox" disabled>'+(isJam ? (v ?? "–") : fmt(v))+'</button></div>';
+      wrap.appendChild(div);
+      return;
+    }
+    const cur = isJam ? drafts.jamboree : drafts[scoreSess][key];
     let btns = "";
     for (let i=1; i<=SCALE_MAX; i++)
       btns += '<button data-cat="'+key+'" data-v="'+i+'" class="'+(cur===i?"sel":"")+'">'+i+'</button>';
@@ -914,7 +927,7 @@ function renderCatButtons(){
                     '<div class="scale">'+btns+'</div>';
     wrap.appendChild(div);
   });
-  wrap.querySelectorAll("button").forEach(b => {
+  wrap.querySelectorAll("button[data-cat]").forEach(b => {
     b.onclick = () => {
       const v = b.dataset.v ? parseInt(b.dataset.v) : null;
       if (b.dataset.cat === "jamboree") drafts.jamboree = v; else drafts[scoreSess][b.dataset.cat] = v;
