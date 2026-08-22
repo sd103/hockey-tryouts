@@ -182,12 +182,14 @@
         <li><b>Score players right in the table</b> — tap the dropdowns to give 1–5 for Overall, Skating, Compete and Hockey IQ (plus Jamboree for M11 only). <b>1 = best, 5 = worst.</b> Scores save the moment you pick them. Leave anything you didn't see blank — blanks are never averaged in.</li>
         <li><b>Add notes with the pencil</b> — tap the ✎ next to a player's name, type your observation and tap Add note. A timestamp is added automatically, and you can keep adding entries as the tryout goes on. The pencil turns dark when notes exist. To fix a mistake in a note, tap the player's name and edit the notes on their scoring page.</li>
         <li><b>Goalies have their own table</b> below the skaters in each age group — don't forget them! Their skills are scored as Skill 1, 2, 3.</li>
-        <li><b>Tap a player's name</b> to open the full scoring page.</li>
+        <li><b>Tap a player's name</b> to open the full scoring page. It opens on your Average; tap S1, S2 or S3 there to score every skill for that player in one place.</li>
+        <li><b>Use the filters</b> — position, an Overall range, and <b>No Overall Score</b>, which lists the players you haven't given an Overall yet in the selected session. Check it before you leave the rink.</li>
         <li><b>You can change any score at any time</b> — just tap the dropdown again, or use the – option to clear it.</li>
         <li><b>Bad rink wifi?</b> No problem. Scores save on your phone and send automatically when connection returns. A banner shows anything still waiting.</li>
         <li><b>Only you and the admin see your scores.</b> Other evaluators can't.</li>
       </ul>
       <button id="startScoringBtn" class="btn" style="width:100%;margin-top:8px;">Start scoring</button>
+      <a href="Grizzlies-Evaluator-Guide.pdf" target="_blank" class="link" style="display:block;text-align:center;margin-top:12px;">Full evaluator guide (PDF)</a>
       <button id="changePassBtn" class="btn small dark" style="width:100%;margin-top:10px;">Change my password</button>
       <div class="ok-msg" id="passMsg"></div>
     </div>
@@ -298,7 +300,7 @@
           </div>
           <div><label>Category</label>
             <select id="pCat">
-              <option>M11</option><option>M13</option><option>M15</option><option>M17</option><option>M19</option>
+              <option>M11</option><option>M13</option><option>M15</option><option>M17</option><option>M19</option><option>Junior</option>
             </select>
           </div>
         </div>
@@ -316,7 +318,7 @@
       <div class="card">
         <h3 style="margin-top:0;">Import players from CSV</h3>
         <p style="font-size:13px;color:var(--muted);margin:4px 0 10px;">
-          Columns: first_name, last_name, birth_date, jersey_number, position (F/D/G), category (M11/M13/M15/M17/M19),
+          Columns: first_name, last_name, birth_date, jersey_number, position (F/D/G), category (M11/M13/M15/M17/M19/Junior),
           level_last_year (e.g. M11-B), organisation (Hockey West Island, DDO, Pierrefonds, Lakeshore). Only last_name is required.
           Category is auto-assigned from birth date when blank. Dates like 2015-07-29 or 7/29/15 both work.
         </p>
@@ -371,7 +373,7 @@
       <div class="twrap">
         <table>
           <thead><tr><th>Evaluator</th><th class="num">Total</th><th class="num">M11</th><th class="num">M13</th>
-          <th class="num">M15</th><th class="num">M17</th><th class="num">M19</th><th class="opt">Last entry</th></tr></thead>
+          <th class="num">M15</th><th class="num">M17</th><th class="num">M19</th><th class="num">Jr</th><th class="opt">Last entry</th></tr></thead>
           <tbody id="activityTable"></tbody>
         </table>
       </div>
@@ -393,10 +395,10 @@ const SUPABASE_URL = "https://zmurervbsodzjlzcpqvt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_7aFQ-qkRpqCKgZ812NjeZA_NRT9osTP";
 const SCALE_MAX = 5; // 1 = best, 5 = worst
 const SEASON_YEAR = 2026;
-const AGE_CATS = ["M11","M13","M15","M17","M19"];
+const AGE_CATS = ["M11","M13","M15","M17","M19","Junior"];
 const UNC = "__unc__";
 const LEVELS = ["None","Private","RESQ","M9-1","M9-2","M9-3","M9-4",
-  ...["M11","M13","M15","M17","M19"].flatMap(c => ["C","B","A","BB","AA"].map(l => c+"-"+l))];
+  ...["M11","M13","M15","M17","M19","Junior"].flatMap(c => ["C","B","A","BB","AA"].map(l => c+"-"+l))];
 const ORGS = ["None","Hockey West Island","DDO","Pierrefonds","Lakeshore"];
 function fillSelect(id, list, value){
   const sel = $(id);
@@ -432,6 +434,7 @@ function catFromBirthYear(y){
   if (age <= 14) return "M15";
   if (age <= 16) return "M17";
   if (age <= 18) return "M19";
+  if (age <= 21) return "Junior";
   return null;
 }
 function catFromBirthDate(d){ return d ? catFromBirthYear(String(d).slice(0,4)) : null; }
