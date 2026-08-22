@@ -776,7 +776,8 @@ function renderEvalTables(){
       if (!list.length) return;
       anyTable = true;
       const cols = jamMode ? [["jamboree", labels.jamboree, "jamboree"]]
-        : SKILLS.map(k => [k, labels[k], col(k, avgMode ? 1 : sess)]);   // [key, label, dbField]
+        : ((avgMode && cat === "M11") ? [["jamboree", labels.jamboree, "jamboree"]] : [])
+          .concat(SKILLS.map(k => [k, labels[k], col(k, avgMode ? 1 : sess)]));   // [key, label, dbField]
       const scored = list.filter(p => valOf(myScoreFor(p), mainKey) != null).length;
       grp.insertAdjacentHTML("beforeend",
         '<div class="secttitle'+(title==="Goalies"?" goalie":"")+'" style="margin-top:4px;">'+title+
@@ -808,7 +809,7 @@ function renderEvalTables(){
           '<td class="num"><button class="notebtn'+(sc.notes?' has':'')+'" data-pid="'+p.id+'" title="'+(sc.notes?'View/edit note':'Add note')+'">'+(sc.notes?'&#128221;':'&#9998;')+'</button></td>' +
           cols.map(c => {
             const v = valOf(sc, c[0]);
-            if (avgMode) return '<td class="num avgcell">'+fmt(v)+'</td>';
+            if (avgMode) return '<td class="num avgcell">'+(c[0]==="jamboree" ? (v ?? "–") : fmt(v))+'</td>';
             let opts = '<option value="">–</option>';
             for (let i=1; i<=SCALE_MAX; i++)
               opts += '<option value="'+i+'"'+(v===i?' selected':'')+'>'+i+'</option>';
@@ -919,16 +920,16 @@ function renderCatButtons(){
   const wrap = $("scoreCats");
   wrap.innerHTML = avgMode ? '<p class="desc" style="margin-top:8px;">Your average across the sessions you scored. Tap S1, S2 or S3 above to enter or change scores.</p>'
     : jamMode ? '<p class="desc" style="margin-top:8px;">One Jamboree score per player — kept separate from the session scores.</p>' : "";
-  const keys = jamMode ? ["jamboree"] : SKILLS;
+  const keys = jamMode ? ["jamboree"] : ((avgMode && hasJamboree(currentPlayer)) ? ["jamboree"] : []).concat(SKILLS);
   keys.forEach(key => {
     const isJam = key === "jamboree";
     const div = document.createElement("div");
     if (key === "overall") div.className = "overall";
     if (avgMode){
-      const v = evalAvg(flat, key);
-      const sessVals = SESSIONS.map(x => "S"+x+" "+(flat[col(key,x)] ?? "–")).join(" &middot; ");
+      const v = isJam ? drafts.jamboree : evalAvg(flat, key);
+      const sessVals = isJam ? "Jamboree" : SESSIONS.map(x => "S"+x+" "+(flat[col(key,x)] ?? "–")).join(" &middot; ");
       div.innerHTML = '<div class="catlabel"><b>'+labels[key]+'</b><span>'+sessVals+'</span></div>' +
-                      '<div class="scale"><button class="avgbox" disabled>'+fmt(v)+'</button></div>';
+                      '<div class="scale"><button class="avgbox" disabled>'+(isJam ? (v ?? "–") : fmt(v))+'</button></div>';
       wrap.appendChild(div);
       return;
     }
@@ -1126,7 +1127,7 @@ function renderAdminTables(){
       const sortKey = jamMode && adminSort.key === "overall" ? { key:"jamboree", dir: adminSort.dir } : adminSort;
       const data = sortRows(list, sortKey, getVal);
       const pre = sess === "all" ? "" : "S"+sess+" ";
-      const scoreCols = jamMode ? ["jamboree"] : SKILLS;
+      const scoreCols = jamMode ? ["jamboree"] : ((sess === "all" && cat === "M11") ? ["jamboree"] : []).concat(SKILLS);
       let html = '<table><thead><tr>' +
         th("#","num",adminSort,"num") + th("Name","name",adminSort) +
         th("Pos","pos",adminSort,"num") + th("Entries","entries",adminSort,"num") +
