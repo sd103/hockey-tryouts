@@ -179,7 +179,8 @@
       <ul class="helplist">
         <li><b>Pick an age group</b> (M11, M13...) using the buttons at the top.</li>
         <li><b>Pick the session</b> — each age group opens on <b>Avg</b> (your own average across sessions, read-only). Tap <b>S1 / S2 / S3</b> to score the session you're watching; it stays selected for that age group until you reload (other age groups can be on a different session).</li>
-        <li><b>Score players right in the table</b> — tap the dropdowns to give 1–5 for Overall, Skating, Compete and Hockey IQ (plus Jamboree for M11 only). <b>1 = best, 5 = worst.</b> Scores save the moment you pick them. Leave anything you didn't see blank — blanks are never averaged in.</li>
+        <li><b>Score players right in the table</b> — tap the dropdowns to give 1–5 for Overall, Skating, Compete and Hockey IQ. <b>1 = best, 5 = worst.</b> Scores save the moment you pick them. Leave anything you didn't see blank — blanks are never averaged in.</li>
+        <li><b>Jamboree (M11 only)</b> has its own spot on the switch. It's one score per player, kept completely separate from the sessions.</li>
         <li><b>Add notes with the pencil</b> — tap the ✎ next to a player's name, type your observation and tap Add note. A timestamp is added automatically, and you can keep adding entries as the tryout goes on. The pencil turns dark when notes exist. To fix a mistake in a note, tap the player's name and edit the notes on their scoring page.</li>
         <li><b>Goalies have their own table</b> below the skaters in each age group — don't forget them! Their skills are scored as Skill 1, 2, 3.</li>
         <li><b>Tap a player's name</b> to open the full scoring page. It opens on your Average; tap S1, S2 or S3 there to score every skill for that player in one place.</li>
@@ -739,23 +740,22 @@ function renderEvalTables(){
   const filter = ($("searchBox").value || "").toLowerCase();
   const wrap = $("evalTables");
   wrap.innerHTML = "";
-  const SESS_OPTS = [["avg","Avg"],[1,"S1"],[2,"S2"],[3,"S3"]];
-
   const groups = evalCat === "All" ? [...AGE_CATS, UNC] : [evalCat];
   groups.forEach(cat => {
     const catPlayers = players.filter(p => inGroup(p, cat));
     if (!catPlayers.length) return;
     const sess = getSess(cat);
-    const avgMode = sess === "avg";
-    const showJam = cat === "M11";
+    const avgMode = sess === "avg", jamMode = sess === "jam";
+    const SESS_OPTS = [["avg","Avg"], ...(cat === "M11" ? [["jam","Jamboree"]] : []), [1,"S1"],[2,"S2"],[3,"S3"]];
     const valOf = (s, k) => !s ? null : (k === "jamboree" ? (s.jamboree ?? null) : (avgMode ? evalAvg(s, k) : (s[col(k, sess)] ?? null)));
+    const mainKey = jamMode ? "jamboree" : "overall";   // what "scored" / No Overall Score mean in this view
 
     const pool = catPlayers.filter(p => {
       if (filter && !fullName(p).toLowerCase().includes(filter) && !String(p.jersey_number).includes(filter)) return false;
       if (!posMatch(p, evalFilters.pos)) return false;
       const sc = myScoreFor(p);
-      if (!ovMatch(valOf(sc, "overall"), evalFilters.ov)) return false;
-      if (evalFilters.ns && valOf(sc, "overall") != null) return false;
+      if (!ovMatch(valOf(sc, mainKey), evalFilters.ov)) return false;
+      if (evalFilters.ns && valOf(sc, mainKey) != null) return false;
       return true;
     });
 
@@ -764,9 +764,9 @@ function renderEvalTables(){
     grp.className = "sessgroup";
     grp.innerHTML = '<div class="secttitle'+(cat===UNC?" unc":"")+'">'+groupLabel(cat)+'</div>' +
       '<div class="sessbar"><span class="lbl">Session</span>'+segHTML(sess, SESS_OPTS)+
-      '<span class="hint">'+(avgMode ? "Your average across sessions — read only" : "Scoring Session "+sess)+'</span></div>';
+      '<span class="hint">'+(avgMode ? "Your average across sessions — read only" : jamMode ? "Jamboree — one score per player, separate from the sessions" : "Scoring Session "+sess)+'</span></div>';
     grp.querySelectorAll(".seg button").forEach(b => {
-      b.onclick = () => { setSess(cat, b.dataset.v === "avg" ? "avg" : parseInt(b.dataset.v)); renderEvalTables(); };
+      b.onclick = () => { setSess(cat, isNaN(b.dataset.v) ? b.dataset.v : parseInt(b.dataset.v)); renderEvalTables(); };
     });
     wrap.appendChild(grp);
 
@@ -775,12 +775,12 @@ function renderEvalTables(){
      ["Goalies", pool.filter(isGoalie), GOALIE_LABELS]].forEach(([title, list, labels]) => {
       if (!list.length) return;
       anyTable = true;
-      const cols = (showJam ? [["jamboree", labels.jamboree, "jamboree"]] : [])
-        .concat(SKILLS.map(k => [k, labels[k], col(k, avgMode ? 1 : sess)]));   // [key, label, dbField]
-      const scored = list.filter(p => valOf(myScoreFor(p), "overall") != null).length;
+      const cols = jamMode ? [["jamboree", labels.jamboree, "jamboree"]]
+        : SKILLS.map(k => [k, labels[k], col(k, avgMode ? 1 : sess)]);   // [key, label, dbField]
+      const scored = list.filter(p => valOf(myScoreFor(p), mainKey) != null).length;
       grp.insertAdjacentHTML("beforeend",
         '<div class="secttitle'+(title==="Goalies"?" goalie":"")+'" style="margin-top:4px;">'+title+
-        ' <span>('+scored+'/'+list.length+' scored'+(avgMode?"":" in S"+sess)+')</span></div>');
+        ' <span>('+scored+'/'+list.length+' scored'+(avgMode?"":jamMode?" at Jamboree":" in S"+sess)+')</span></div>');
       const tw = document.createElement("div");
       tw.className = "twrap";
       const keys = cols.map(c => c[0]);
@@ -796,7 +796,7 @@ function renderEvalTables(){
         th("#","num",evalSort,"num") + th("Name","name",evalSort) +
         th("Pos","pos",evalSort,"num") +
         '<th class="num">Notes</th>' +
-        cols.map(c => th((c[0]==="jamboree"||avgMode) ? c[1] : "S"+sess+" "+c[1], c[0], evalSort, "num")).join("") +
+        cols.map(c => th((jamMode||avgMode) ? c[1] : "S"+sess+" "+c[1], c[0], evalSort, "num")).join("") +
         '</tr></thead><tbody>';
       const totalCols = 4 + cols.length;
       sorted.forEach(p => {
@@ -808,8 +808,7 @@ function renderEvalTables(){
           '<td class="num"><button class="notebtn'+(sc.notes?' has':'')+'" data-pid="'+p.id+'" title="'+(sc.notes?'View/edit note':'Add note')+'">'+(sc.notes?'&#128221;':'&#9998;')+'</button></td>' +
           cols.map(c => {
             const v = valOf(sc, c[0]);
-            if (avgMode && c[0] !== "jamboree") return '<td class="num avgcell">'+fmt(v)+'</td>';
-            if (avgMode) return '<td class="num avgcell">'+(v ?? "–")+'</td>';
+            if (avgMode) return '<td class="num avgcell">'+fmt(v)+'</td>';
             let opts = '<option value="">–</option>';
             for (let i=1; i<=SCALE_MAX; i++)
               opts += '<option value="'+i+'"'+(v===i?' selected':'')+'>'+i+'</option>';
@@ -821,7 +820,7 @@ function renderEvalTables(){
               ? '<div style="white-space:pre-line;font-size:13px;background:#fff;border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-bottom:8px;">'+esc(sc.notes)+'</div>'
               : '<div class="desc" style="margin-bottom:8px;">No notes yet on '+esc(fullName(p))+'.</div>') +
             '<div style="display:flex;gap:8px;">' +
-            '<input class="noteentry" data-pid="'+p.id+'" placeholder="Add a note — timestamp'+(avgMode?"":" and S"+sess)+' added automatically">' +
+            '<input class="noteentry" data-pid="'+p.id+'" placeholder="Add a note — timestamp'+(avgMode?"":jamMode?" and Jamboree":" and S"+sess)+' added automatically">' +
             '<button class="btn small noteadd" data-pid="'+p.id+'" style="white-space:nowrap;">Add note</button>' +
             '</div>' +
             '<div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap;">' +
@@ -833,7 +832,7 @@ function renderEvalTables(){
       html += '</tbody></table>';
       tw.innerHTML = html;
       tw.querySelectorAll("td.pcell").forEach(td => {
-        td.onclick = () => openScore(players.find(p => p.id === td.dataset.pid), avgMode ? 1 : sess);
+        td.onclick = () => openScore(players.find(p => p.id === td.dataset.pid), sess);
       });
       tw.querySelectorAll("button.notebtn").forEach(b => {
         b.onclick = () => { noteOpen[b.dataset.pid] = !noteOpen[b.dataset.pid]; renderEvalTables(); };
@@ -848,7 +847,7 @@ function renderEvalTables(){
           const txt = (inp.value || "").trim();
           if (!txt) return;
           const existing = myScoreFor(p) || {};
-          const stamp = fmtWhen(new Date().toISOString()) + (avgMode ? "" : " (S"+sess+")");
+          const stamp = fmtWhen(new Date().toISOString()) + (avgMode ? "" : jamMode ? " (Jamboree)" : " (S"+sess+")");
           const row = baseRowFrom(p, existing);
           row.notes = (existing.notes ? existing.notes + "\n" : "") + stamp + " — " + txt;
           row.notes_updated_at = new Date().toISOString();
@@ -894,7 +893,7 @@ function renderEvalTables(){
 function openScore(p, sess){
   currentPlayer = p;
   scoreSess = "avg";            // always open on the average view
-  scoreSessHint = sess || 1;    // session the evaluator was on in the table
+  scoreSessHint = sess || 1;
   const existing = myScoreFor(p) || {};
   drafts = { jamboree: existing.jamboree ?? null };
   SESSIONS.forEach(x => { drafts[x] = {}; SKILLS.forEach(k => drafts[x][k] = existing[col(k, x)] ?? null); });
@@ -912,21 +911,24 @@ function renderCatButtons(){
   // session switch — switching keeps unsaved picks for every session until you tap Save
   const seg = $("scoreSessSeg");
   const flat = flatDraft();
-  const avgMode = scoreSess === "avg";
-  seg.innerHTML = segHTML(scoreSess, [["avg","Average"], ...SESSIONS.map(x => [x, "S"+x + (sessionHasData(flat, x) ? " ✓" : "")])], "big");
-  seg.querySelectorAll("button").forEach(b => { b.onclick = () => { scoreSess = b.dataset.v === "avg" ? "avg" : parseInt(b.dataset.v); renderCatButtons(); }; });
+  const avgMode = scoreSess === "avg", jamMode = scoreSess === "jam";
+  seg.innerHTML = segHTML(scoreSess, [["avg","Average"],
+    ...(hasJamboree(currentPlayer) ? [["jam","Jamboree" + (drafts.jamboree != null ? " ✓" : "")]] : []),
+    ...SESSIONS.map(x => [x, "S"+x + (sessionHasData(flat, x) ? " ✓" : "")])], "big");
+  seg.querySelectorAll("button").forEach(b => { b.onclick = () => { scoreSess = isNaN(b.dataset.v) ? b.dataset.v : parseInt(b.dataset.v); renderCatButtons(); }; });
   const wrap = $("scoreCats");
-  wrap.innerHTML = avgMode ? '<p class="desc" style="margin-top:8px;">Your average across the sessions you scored. Tap S1, S2 or S3 above to enter or change scores.</p>' : "";
-  const keys = (hasJamboree(currentPlayer) ? ["jamboree"] : []).concat(SKILLS);
+  wrap.innerHTML = avgMode ? '<p class="desc" style="margin-top:8px;">Your average across the sessions you scored. Tap S1, S2 or S3 above to enter or change scores.</p>'
+    : jamMode ? '<p class="desc" style="margin-top:8px;">One Jamboree score per player — kept separate from the session scores.</p>' : "";
+  const keys = jamMode ? ["jamboree"] : SKILLS;
   keys.forEach(key => {
     const isJam = key === "jamboree";
     const div = document.createElement("div");
     if (key === "overall") div.className = "overall";
     if (avgMode){
-      const v = isJam ? drafts.jamboree : evalAvg(flat, key);
-      const sessVals = isJam ? "" : SESSIONS.map(x => "S"+x+" "+(flat[col(key,x)] ?? "–")).join(" &middot; ");
+      const v = evalAvg(flat, key);
+      const sessVals = SESSIONS.map(x => "S"+x+" "+(flat[col(key,x)] ?? "–")).join(" &middot; ");
       div.innerHTML = '<div class="catlabel"><b>'+labels[key]+'</b><span>'+sessVals+'</span></div>' +
-                      '<div class="scale"><button class="avgbox" disabled>'+(isJam ? (v ?? "–") : fmt(v))+'</button></div>';
+                      '<div class="scale"><button class="avgbox" disabled>'+fmt(v)+'</button></div>';
       wrap.appendChild(div);
       return;
     }
@@ -935,7 +937,7 @@ function renderCatButtons(){
     for (let i=1; i<=SCALE_MAX; i++)
       btns += '<button data-cat="'+key+'" data-v="'+i+'" class="'+(cur===i?"sel":"")+'">'+i+'</button>';
     btns += '<button data-cat="'+key+'" data-v="" style="flex:.6;font-size:13px;" title="Clear">–</button>';
-    div.innerHTML = '<div class="catlabel"><b>'+labels[key]+(isJam ? '' : ' <span class="notebadge">S'+scoreSess+'</span>')+'</b><span>1 = best &middot; '+SCALE_MAX+' = worst</span></div>' +
+    div.innerHTML = '<div class="catlabel"><b>'+labels[key]+' <span class="notebadge">'+(isJam ? 'Jamboree' : 'S'+scoreSess)+'</span></b><span>1 = best &middot; '+SCALE_MAX+' = worst</span></div>' +
                     '<div class="scale">'+btns+'</div>';
     wrap.appendChild(div);
   });
@@ -1076,20 +1078,20 @@ function renderAdminTables(){
   const catIds = new Set(catPool.map(p => p.id));
   const catEntries = allScores.filter(s => catIds.has(s.player_id)).reduce((a,s) => a + nEntries(s), 0);
   $("scoreCount").textContent = catEntries + " entries" + (adminCat === "All" ? " total" : " in " + adminCat);
-  const SESS_OPTS = [["all","Combined"],[1,"S1"],[2,"S2"],[3,"S3"]];
-
   const groups = adminCat === "All" ? [...AGE_CATS, UNC] : [adminCat];
   groups.forEach(cat => {
     const catPlayers = players.filter(p => inGroup(p, cat));
     if (!catPlayers.length) return;
     const sess = adminSess[cat] ?? "all";
-    const showJam = cat === "M11";
+    const jamMode = sess === "jam";
+    const SESS_OPTS = [["all","Combined"], ...(cat === "M11" ? [["jam","Jamboree"]] : []), [1,"S1"],[2,"S2"],[3,"S3"]];
+    const mainKey = jamMode ? "jamboree" : "overall";
     const q = ($("adminSearch").value || "").toLowerCase();
-    const agg = playerAgg(catPlayers, sess, adminFilters.ev).filter(d => {
+    const agg = playerAgg(catPlayers, jamMode ? "all" : sess, adminFilters.ev).filter(d => {
       if (q && !fullName(d.p).toLowerCase().includes(q) && !String(d.p.jersey_number).includes(q)) return false;
       if (!posMatch(d.p, adminFilters.pos)) return false;
-      if (!ovMatch(d.overall, adminFilters.ov)) return false;
-      if (adminFilters.ns && d.overall != null) return false;
+      if (!ovMatch(d[mainKey], adminFilters.ov)) return false;
+      if (adminFilters.ns && d[mainKey] != null) return false;
       return true;
     });
 
@@ -1097,10 +1099,10 @@ function renderAdminTables(){
     grp.className = "sessgroup";
     grp.innerHTML = '<div class="secttitle'+(cat===UNC?" unc":"")+'">'+groupLabel(cat)+'</div>' +
       '<div class="sessbar"><span class="lbl">View</span>'+segHTML(sess, SESS_OPTS)+
-      '<span class="hint">'+(sess==="all" ? "Combined across sessions" : "Session "+sess+" only")+
+      '<span class="hint">'+(sess==="all" ? "Combined across sessions" : jamMode ? "Jamboree only — separate from the sessions" : "Session "+sess+" only")+
       (adminFilters.ev !== "All" ? ' &middot; <b>'+esc(profileNames[adminFilters.ev]||"")+'\'s scores only</b>' : '')+'</span></div>';
     grp.querySelectorAll(".seg button").forEach(b => {
-      b.onclick = () => { adminSess[cat] = b.dataset.v === "all" ? "all" : parseInt(b.dataset.v); renderAdminTables(); };
+      b.onclick = () => { adminSess[cat] = isNaN(b.dataset.v) ? b.dataset.v : parseInt(b.dataset.v); renderAdminTables(); };
     });
     wrap.appendChild(grp);
 
@@ -1121,16 +1123,17 @@ function renderAdminTables(){
         if (k === "pos") return d.p.position;
         return d[k];
       };
-      const data = sortRows(list, adminSort, getVal);
+      const sortKey = jamMode && adminSort.key === "overall" ? { key:"jamboree", dir: adminSort.dir } : adminSort;
+      const data = sortRows(list, sortKey, getVal);
       const pre = sess === "all" ? "" : "S"+sess+" ";
+      const scoreCols = jamMode ? ["jamboree"] : SKILLS;
       let html = '<table><thead><tr>' +
         th("#","num",adminSort,"num") + th("Name","name",adminSort) +
         th("Pos","pos",adminSort,"num") + th("Entries","entries",adminSort,"num") +
         th("Notes","notes",adminSort,"num") +
-        (showJam ? th(labels.jamboree,"jamboree",adminSort,"num") : "") +
-        SKILLS.map(k => th(pre + labels[k], k, adminSort, "num")).join("") +
+        scoreCols.map(k => th(jamMode ? labels[k] : pre + labels[k], k, adminSort, "num")).join("") +
         '</tr></thead><tbody>';
-      const totalCols = 5 + (showJam ? 1 : 0) + SKILLS.length;
+      const totalCols = 5 + scoreCols.length;
       data.forEach(d => {
         html += '<tr class="rowlink" data-id="'+d.p.id+'">' +
           '<td class="num"><b>'+(d.p.jersey_number ?? "–")+'</b></td>' +
@@ -1138,8 +1141,7 @@ function renderAdminTables(){
           '<td class="num">'+esc(d.p.position||"–")+'</td>' +
           '<td class="num'+(d.entries===0?' noevals':'')+'">'+(d.entries===0?'&#9888; 0':d.entries)+'</td>' +
           '<td class="num">'+(d.notes ? '&#128221; '+d.notes : '–')+'</td>' +
-          (showJam ? '<td class="num">'+fmt(d.jamboree)+'</td>' : '') +
-          SKILLS.map(k => '<td class="num'+(k==="overall"?" avg":"")+'">'+fmt(d[k])+'</td>').join("") + '</tr>';
+          scoreCols.map(k => '<td class="num'+(k===mainKey?" avg":"")+'">'+fmt(d[k])+'</td>').join("") + '</tr>';
         if (expanded[d.p.id]){
           let inner = d.rows.length ? "" : "<em>No entries yet.</em>";
           const short = isGoalie(d.p) ? GOALIE_SHORT : SKATER_SHORT;
