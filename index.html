@@ -1306,8 +1306,9 @@ $("csvImportBtn").onclick = async () => {
     const first = val(r,"first_name"), last = val(r,"last_name");
     if (!last){ skipped.push("Row "+(i+2)+": missing last name"); return; }
     const bd = parseCSVDate(val(r,"birth_date") || val(r,"birth_year"));
-    let cat = val(r,"category").toUpperCase();
-    if (!AGE_CATS.includes(cat)) cat = catFromBirthDate(bd);
+    const catIn = val(r,"category").replace(/\s+/g,"").toLowerCase();
+    let cat = AGE_CATS.find(c => c.toLowerCase() === catIn) || null;
+    if (!cat) cat = catFromBirthDate(bd);
     const rec = {
       first_name: first || null, last_name: last,
       birth_date: bd,
@@ -1322,17 +1323,24 @@ $("csvImportBtn").onclick = async () => {
   });
   if (!recs.length){ $("csvErr").textContent = skipped.length ? skipped.slice(0,5).join(" · ") : "No valid rows found."; return; }
   $("csvImportBtn").disabled = true;
-  let inserted = 0, failed = 0;
+  let inserted = 0, failed = 0, lastErr = "";
   for (let i=0; i<recs.length; i+=100){
     const chunk = recs.slice(i, i+100);
     const { error } = await db.from("players").insert(chunk);
-    if (error) failed += chunk.length; else inserted += chunk.length;
+    if (!error){ inserted += chunk.length; continue; }
+    // batch rejected — retry one by one so good rows still go in and we learn why the bad ones fail
+    for (const rec of chunk){
+      const r1 = await db.from("players").insert(rec);
+      if (r1.error){ failed++; lastErr = r1.error.message + " (row: " + [rec.first_name, rec.last_name, rec.category].filter(Boolean).join(" ") + ")"; }
+      else inserted++;
+    }
   }
   $("csvImportBtn").disabled = false;
   let msg = inserted + " players imported.";
   if (flagged) msg += " " + flagged + " missing a number — marked in the roster below.";
   if (failed) msg += " " + failed + " failed to save.";
   $("csvOk").textContent = msg;
+  if (lastErr) $("csvErr").textContent = "Database said: " + lastErr;
   if (skipped.length) $("csvErr").textContent = "Skipped (no last name): " + skipped.slice(0,3).join(" · ") + (skipped.length>3 ? " (+"+(skipped.length-3)+" more)" : "");
   $("csvFile").value = "";
   await loadPlayers(); renderRoster(); renderAdminTables();
